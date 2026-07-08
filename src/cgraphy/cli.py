@@ -24,7 +24,20 @@ def main(argv=None) -> int:
     if args.command is None:
         build_parser().print_help()
         return 1
-    print(f"{args.command}: not implemented yet", file=sys.stderr)
+    if args.command == "index":
+        from cgraphy.indexer import index_repo
+        stats = index_repo(args.path, git_history=args.git_history)
+        print(f"indexed {stats['files_indexed']} files "
+              f"({stats['files_skipped']} unchanged), {stats['nodes']} nodes")
+        return 0
+    if args.command == "serve":
+        from cgraphy.server import run_server
+        run_server(args.path)
+        return 0
+    if args.command == "view":
+        from cgraphy.viewer import serve_viewer
+        serve_viewer(args.path, port=args.port)
+        return 0
     return 2
 
 
