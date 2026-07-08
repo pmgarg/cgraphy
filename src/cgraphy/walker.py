@@ -40,7 +40,12 @@ def _load_ignores(root: Path):
         f = root / name
         if f.is_file():
             lines += f.read_text(errors="replace").splitlines()
-    return pathspec.PathSpec.from_lines("gitwildmatch", lines) if lines else None
+    if not lines:
+        return None
+    try:
+        return pathspec.GitIgnoreSpec.from_lines(lines)
+    except AttributeError:  # pathspec < 0.10
+        return pathspec.PathSpec.from_lines("gitwildmatch", lines)
 
 
 def iter_files(root):
