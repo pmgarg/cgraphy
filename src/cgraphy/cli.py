@@ -11,6 +11,7 @@ def build_parser() -> argparse.ArgumentParser:
     idx = sub.add_parser("index", help="build/update the knowledge graph")
     idx.add_argument("path", nargs="?", default=".")
     idx.add_argument("--git-history", action="store_true")
+    idx.add_argument("--summarize", action="store_true")
     srv = sub.add_parser("serve", help="run the MCP server (stdio)")
     srv.add_argument("path", nargs="?", default=".")
     view = sub.add_parser("view", help="serve the local graph viewer")
@@ -29,6 +30,14 @@ def main(argv=None) -> int:
         stats = index_repo(args.path, git_history=args.git_history)
         print(f"indexed {stats['files_indexed']} files "
               f"({stats['files_skipped']} unchanged), {stats['nodes']} nodes")
+        if args.summarize:
+            from cgraphy.db import GraphDB
+            from cgraphy.indexer import db_path
+            from cgraphy.summarize import api_summarize
+            db = GraphDB(db_path(args.path))
+            n = api_summarize(db, args.path)
+            db.close()
+            print(f"summarized {n} symbols")
         return 0
     if args.command == "serve":
         from cgraphy.server import run_server

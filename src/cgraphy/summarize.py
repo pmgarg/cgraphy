@@ -1,4 +1,6 @@
 import hashlib
+import json
+import os
 from pathlib import Path
 
 MAX_SNIPPET_LINES = 60
@@ -54,3 +56,53 @@ def store_summaries(db, root, items) -> str:
     return (f"Stored {stored} summaries. {remaining} symbols still need one — "
             + ("call cgraphy_enrich for the next batch." if remaining else
                "the graph is fully enriched."))
+
+
+API_PROMPT = """Summarize each code symbol below in one line (<=15 words): \
+what it does and why it exists.
+Reply with ONLY a JSON array: [{"id": <id>, "summary": "<text>"}, ...]
+
+%s"""
+
+
+def _anthropic_client():
+    try:
+        import anthropic
+    except ImportError:
+        return None
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        return None
+    return anthropic.Anthropic()
+
+
+def api_summarize(db, root, model=None, batch=25) -> int:
+    client = _anthropic_client()
+    if client is None:
+        print("--summarize needs `pip install cgraphy[summarize]` and "
+              "ANTHROPIC_API_KEY; skipping (agents can enrich via MCP instead).")
+        return 0
+    model = model or os.environ.get("CGRAPHY_MODEL", "claude-haiku-4-5-20251001")
+    total = 0
+    while True:
+        rows = db.unsummarized(batch)
+        if not rows:
+            break
+        blocks = "\n".join(
+            f"--- id={r['id']} {r['kind']} {r['qualified_name']}\n"
+            f"{_snippet(root, r)}" for r in rows)
+        resp = client.messages.create(
+            model=model, max_tokens=2000,
+            messages=[{"role": "user", "content": API_PROMPT % blocks}])
+        text = resp.content[0].text.strip()
+        if text.startswith("```"):
+            text = text.strip("`").lstrip("json\n")
+        try:
+            items = json.loads(text)
+        except ValueError:
+            break
+        before = total
+        result = store_summaries(db, root, items)
+        total += int(result.split()[1])
+        if total == before:  # no progress; avoid infinite loop
+            break
+    return total
