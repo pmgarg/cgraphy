@@ -276,8 +276,41 @@ convention-following histories (click: +4 hit@5/hit@10; express: +4
 hit@5) and nothing elsewhere --- consistent with its dependence on commit
 hygiene.
 
-\textbf{Issue-driven suite (SWE-bench Lite).}
-[RESULTS-SWEBENCH]
+\begin{table}[t]
+\centering
+\caption{Issue-driven localization: 57 SWE-bench Lite instances across
+seven projects, each evaluated at its pre-fix \texttt{base\_commit}
+snapshot with real GitHub issue text as the query.}
+\small
+\begin{tabular}{lcccc}
+\toprule
+Method & hit@5 & hit@10 & MRR & Tokens \\
+\midrule
+\textsc{fts}       & 0.333 & 0.456 & 0.239 & 444 \\
+\textsc{rank}      & 0.333 & 0.456 & 0.239 & 444 \\
+\textsc{expand-nc} & \textbf{0.351} & \textbf{0.491} & \textbf{0.246} & 1{,}301 \\
+\textsc{expand}    & \textbf{0.351} & \textbf{0.491} & \textbf{0.246} & 1{,}301 \\
+\bottomrule
+\end{tabular}
+\label{tab:swe}
+\end{table}
+
+\textbf{Issue-driven suite (SWE-bench Lite, Table~\ref{tab:swe}).}
+Real issue texts are markedly harder than commit subjects: the lexical
+baseline drops to hit@10 0.456 (from 0.602 on the commit suite), because
+user-written reports describe symptoms in prose that shares less
+vocabulary with code identifiers. Here one-hop structural expansion
+provides the only lift (+3.5 points hit@10, +1.8 hit@5); PageRank blending
+and co-change edges contribute nothing --- pre-fix histories at
+often-years-old base commits offer sparse pair support for the files in
+question. Per-project variance is wide (hit@10 with \textsc{expand}: flask
+1.00, requests 0.83, sphinx 0.69, seaborn 0.50, pytest 0.29, xarray 0.20,
+pylint 0.17), tracking repository size and the drift between issue
+vocabulary and identifiers. We emphasize the operating point: these are
+single-shot, sub-second, LLM-free retrievals costing 444--1{,}301 tokens
+that seed an agent's \emph{first} tool call; LLM-in-the-loop localization
+agents~\cite{locagent} report higher file accuracy at orders of magnitude
+more tokens, and the two are complementary layers, not competitors.
 
 \textbf{Token economy.} Retrieval payloads range 148--1{,}239 tokens per
 query across all repositories and methods. On three private codebases

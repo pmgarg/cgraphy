@@ -54,7 +54,17 @@
       "expand-nc": {"hit@5": 0.5, "hit@10": 0.62, "mrr": 0.45, "avg_tokens": 1205},
       "expand": {"hit@5": 0.5, "hit@10": 0.62, "mrr": 0.451, "avg_tokens": 1205}}}
   ],
-  "swebench_localization": "pending — filled by scripts/eval_swebench.py run",
+  "swebench_localization": {
+    "instances": 57, "skipped": 0,
+    "repos": ["pytest", "sphinx", "pylint", "xarray", "seaborn", "requests", "flask"],
+    "results": {
+      "fts": {"hit@5": 0.333, "hit@10": 0.456, "mrr": 0.239, "avg_tokens": 444},
+      "rank": {"hit@5": 0.333, "hit@10": 0.456, "mrr": 0.239, "avg_tokens": 444},
+      "expand-nc": {"hit@5": 0.351, "hit@10": 0.491, "mrr": 0.246, "avg_tokens": 1301},
+      "expand": {"hit@5": 0.351, "hit@10": 0.491, "mrr": 0.246, "avg_tokens": 1301}},
+    "per_repo_hit10_expand": {"flask": 1.0, "requests": 0.83, "sphinx": 0.69,
+      "seaborn": 0.5, "pytest": 0.29, "xarray": 0.2, "pylint": 0.17}
+  },
   "local_projects_token_economy": [
     {"project": "EAG_V3 (agentic LLM coursework, python)", "cgraphy_tokens": 2983,
      "read_all_code_tokens": 1253150, "reduction_factor": 420.1},
