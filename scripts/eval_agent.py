@@ -43,7 +43,7 @@ def make_query(problem, max_words=250):
     return " ".join(text.split()[:max_words])
 
 
-def run_claude(cwd, prompt, arm, model, max_turns=15):
+def run_claude(cwd, prompt, arm, model, max_turns=30):
     allowed = "Read,Grep,Glob"
     cmd = ["claude", "-p", prompt, "--output-format", "json",
            "--model", model, "--max-turns", str(max_turns),
@@ -61,12 +61,15 @@ def run_claude(cwd, prompt, arm, model, max_turns=15):
                            timeout=600)
     except subprocess.TimeoutExpired:
         return {"error": "timeout"}
-    if r.returncode != 0 or not r.stdout.strip():
-        return {"error": f"exit={r.returncode} err={r.stderr[-300:]}"}
+    # the CLI exits 1 when max-turns is hit but still emits full result JSON
     try:
-        return json.loads(r.stdout)
+        out = json.loads(r.stdout)
+        if isinstance(out, dict) and "usage" in out:
+            return out
     except ValueError:
-        return {"error": "bad json: " + r.stdout[-200:]}
+        pass
+    return {"error": f"exit={r.returncode} out={r.stdout[-300:]} "
+                     f"err={r.stderr[-300:]}"}
 
 
 def extract_files(text):

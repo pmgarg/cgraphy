@@ -11,7 +11,6 @@ Usage:
 """
 import argparse
 import json
-import re
 import shutil
 import subprocess
 import sys
@@ -54,12 +53,15 @@ def run_claude(cwd, prompt, arm, model, max_turns=40):
                            timeout=1200)
     except subprocess.TimeoutExpired:
         return {"error": "timeout"}
-    if r.returncode != 0 or not r.stdout.strip():
-        return {"error": f"exit={r.returncode} err={r.stderr[-300:]}"}
+    # the CLI exits 1 when max-turns is hit but still emits full result JSON
     try:
-        return json.loads(r.stdout)
+        out = json.loads(r.stdout)
+        if isinstance(out, dict) and "usage" in out:
+            return out
     except ValueError:
-        return {"error": "bad json"}
+        pass
+    return {"error": f"exit={r.returncode} out={r.stdout[-200:]} "
+                     f"err={r.stderr[-200:]}"}
 
 
 def harvest_patch(repo: Path) -> str:
