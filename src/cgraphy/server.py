@@ -75,10 +75,42 @@ def make_tools(root):
         finally:
             db.close()
 
+    def cgraphy_read(symbol_or_file: str, token_budget: int = 1500) -> str:
+        db = _fresh_db(root)
+        if db is None:
+            return NO_GRAPH
+        try:
+            return graphq.read_symbol(db, root, symbol_or_file,
+                                      token_budget=token_budget)
+        finally:
+            db.close()
+
+    def cgraphy_impact(symbol: str, token_budget: int = 1500) -> str:
+        db = _fresh_db(root)
+        if db is None:
+            return NO_GRAPH
+        try:
+            return graphq.impact(db, symbol, token_budget=token_budget)
+        finally:
+            db.close()
+
+    def cgraphy_diff_context(token_budget: int = 2000) -> str:
+        db = _fresh_db(root)
+        if db is None:
+            return NO_GRAPH
+        try:
+            from cgraphy.diffctx import diff_context
+            return diff_context(db, root, token_budget=token_budget)
+        finally:
+            db.close()
+
     return {
         "cgraphy_overview": cgraphy_overview,
         "cgraphy_search": cgraphy_search,
         "cgraphy_context": cgraphy_context,
+        "cgraphy_read": cgraphy_read,
+        "cgraphy_impact": cgraphy_impact,
+        "cgraphy_diff_context": cgraphy_diff_context,
         "cgraphy_enrich": cgraphy_enrich,
         "cgraphy_store_summaries": cgraphy_store_summaries,
     }
@@ -98,6 +130,20 @@ DESCRIPTIONS = {
         "summary, callers, callees, imports and co-changed files — within a "
         "token budget. Use instead of reading whole files; then read only the "
         "1-2 files that matter.",
+    "cgraphy_read":
+        "Read ONLY the source of one symbol (function/class) with line "
+        "numbers, within a token budget. Use instead of reading whole files "
+        "once cgraphy_search or cgraphy_context located the symbol.",
+    "cgraphy_impact":
+        "Blast radius BEFORE editing a symbol: everything that depends on it "
+        "(direct and transitive callers/importers), tests likely affected, "
+        "and files that historically change together with it. ALWAYS call "
+        "this before modifying or refactoring shared code.",
+    "cgraphy_diff_context":
+        "Review the current uncommitted changes: maps the working git diff "
+        "to the exact symbols touched and shows what uses them and which "
+        "tests cover them. Call before committing or when asked to review "
+        "or continue in-progress work.",
     "cgraphy_enrich":
         "Fetch code symbols that still need one-line summaries. Summarize each "
         "and submit via cgraphy_store_summaries; repeat until done. Run this "

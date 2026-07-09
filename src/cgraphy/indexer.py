@@ -128,6 +128,11 @@ def index_repo(root, git_history: bool = False) -> dict:
         pass
     from cgraphy.communities import apply_communities
     apply_communities(db)
+    try:
+        from cgraphy import semantic
+        semantic.embed_missing(db)
+    except Exception:
+        pass
     stats["nodes"] = db.count_nodes()
     db.commit()
     db.close()

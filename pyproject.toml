@@ -15,6 +15,7 @@ dependencies = [
 
 [project.optional-dependencies]
 summarize = ["anthropic>=0.40"]
+semantic = ["model2vec>=0.3"]
 
 [project.scripts]
 cgraphy = "cgraphy.cli:main"

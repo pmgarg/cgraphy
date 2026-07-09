@@ -140,7 +140,13 @@ def overview(db, token_budget=2000) -> str:
 
 
 def search(db, query, limit=12) -> str:
-    rows = db.search_fts(query, limit)
+    has_vectors = db.conn.execute(
+        "SELECT 1 FROM vectors LIMIT 1").fetchone() is not None
+    if has_vectors:
+        from cgraphy import semantic
+        rows = [r for r in semantic.hybrid_search(db, query, limit) if r]
+    else:
+        rows = db.search_fts(query, limit)
     if not rows:
         return f"No matches for '{query}'. Try different words or cgraphy_overview."
     return "\n".join(_line(r, "- ") for r in rows)

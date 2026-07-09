@@ -18,11 +18,17 @@ STEERING_BLOCK = f"""
 This repo is indexed by cgraphy (MCP server `cgraphy`). To keep context small
 and answers grounded, follow this order BEFORE reading files:
 
-1. `cgraphy_overview` — orient yourself (repo map, key symbols by importance).
+1. `cgraphy_overview` — orient yourself (repo map, subsystems, key symbols).
 2. `cgraphy_search <query>` — locate symbols/files by name or meaning.
-3. `cgraphy_context <symbol>` — get callers/callees/imports/co-changed files
+3. `cgraphy_context <symbol>` — callers/callees/imports/co-changed files
    within a token budget.
-4. Only then open the 1-2 files that actually matter.
+4. `cgraphy_read <symbol>` — read just that symbol's source, not the file.
+
+When EDITING code:
+- BEFORE changing a shared symbol, call `cgraphy_impact <symbol>` to see
+  dependents and affected tests.
+- BEFORE committing (or when resuming work), call `cgraphy_diff_context`
+  to map your working diff to affected symbols and tests.
 
 Do NOT bulk-read directories or many whole files when these tools can answer
 structurally. If summaries are missing, run the `cgraphy_enrich` →

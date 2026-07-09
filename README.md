@@ -73,15 +73,44 @@ args = ["cgraphy", "serve", "/path/to/repo"]
                             "args": ["cgraphy", "serve", "/path/to/repo"]}}}
 ```
 
-## The five tools
+## The eight tools
+
+Reading / orientation:
 
 | Tool | Returns | The agent uses it… |
 | --- | --- | --- |
-| `cgraphy_overview` | Repo map: key symbols by importance + all files, ~1–2K tokens | first, instead of reading files to orient |
-| `cgraphy_search` | Ranked symbol matches with `file:line` and summaries | before grep / directory listing |
+| `cgraphy_overview` | Repo map: subsystems, key symbols by importance, all files | first, instead of reading files to orient |
+| `cgraphy_search` | Ranked matches with `file:line` and summaries (hybrid lexical+semantic when the `[semantic]` extra is installed) | before grep / directory listing |
 | `cgraphy_context` | Subgraph around a symbol (callers, callees, imports, co-changes) within a token budget | instead of reading whole files |
+| `cgraphy_read` | Just one symbol's source, line-numbered, budgeted | instead of reading the whole file |
+
+Editing / reviewing — the tools that make the graph part of the change loop:
+
+| Tool | Returns | The agent uses it… |
+| --- | --- | --- |
+| `cgraphy_impact` | Blast radius: direct + transitive dependents, affected tests, historically co-changed files | before modifying shared code |
+| `cgraphy_diff_context` | The working git diff mapped to touched symbols, their users, and covering tests | before committing / when resuming work |
+
+Enrichment:
+
+| Tool | Returns | The agent uses it… |
+| --- | --- | --- |
 | `cgraphy_enrich` | Batch of symbols that still need one-line summaries | when asked to "enrich the graph" |
 | `cgraphy_store_summaries` | Confirmation + remaining count | to save the summaries it wrote |
+
+Retrieval is usage-aware: symbols an agent repeatedly asks about get a small,
+capped boost in future context expansion (telemetry stays in the local
+SQLite file; nothing leaves your machine).
+
+### Semantic search (optional)
+
+```bash
+pip install "cgraphy[semantic]"
+```
+
+Adds tiny static embeddings (model2vec, CPU-only, no torch) fused with FTS5
+by reciprocal-rank fusion — closes the vocabulary gap between issue-style
+prose ("login broken") and code identifiers (`validate_jwt`).
 
 The graph self-heals: tools detect stale files and re-index incrementally
 (changed files only) before answering.

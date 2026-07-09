@@ -28,7 +28,8 @@ from cgraphy.indexer import db_path, index_repo
 from cgraphy.pagerank import apply_pagerank
 
 sys.path.insert(0, str(Path(__file__).parent))
-from eval_localization import is_code, method_expand, method_fts, method_rank
+from eval_localization import (is_code, method_expand, method_fts,
+                               method_hybrid, method_rank)
 
 PATCH_FILE_RE = re.compile(r"^diff --git a/(\S+) b/", re.M)
 
@@ -67,6 +68,12 @@ def run_instance(repo: Path, inst):
         "expand-nc": method_expand(db, q, use_cochange=False),
         "expand": method_expand(db, q),
     }
+    from cgraphy import semantic
+    if semantic.available():
+        semantic.embed_missing(db)
+        out["hybrid"] = method_hybrid(db, q)
+        out["hybrid-expand"] = method_expand(
+            db, q, rows=[r for r in semantic.hybrid_search(db, q, 25) if r])
     db.close()
     return out
 
@@ -111,7 +118,10 @@ def main():
     hdr = f"{'method':<10} {'hit@5':>6} {'hit@10':>7} {'mrr':>6} {'tokens':>7}"
     print(hdr + "\n" + "-" * len(hdr))
     summary = {}
-    for m in ("fts", "rank", "expand-nc", "expand"):
+    methods = ["fts", "rank", "expand-nc", "expand"]
+    if "hybrid" in agg:
+        methods += ["hybrid", "hybrid-expand"]
+    for m in methods:
         a = agg[m]
         n = a["n"] or 1
         summary[m] = {"hit@5": round(a["hit5"] / n, 3),

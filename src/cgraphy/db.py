@@ -46,6 +46,10 @@ CREATE TABLE IF NOT EXISTS usage(
   node_id INTEGER PRIMARY KEY,
   cnt INTEGER DEFAULT 0
 );
+CREATE TABLE IF NOT EXISTS vectors(
+  node_id INTEGER PRIMARY KEY,
+  vec BLOB
+);
 CREATE VIRTUAL TABLE IF NOT EXISTS node_fts USING fts5(
   name, qualified_name, summary
 );
@@ -176,6 +180,8 @@ class GraphDB:
         self.conn.execute(f"DELETE FROM edges WHERE source_id IN ({q}) "
                           f"OR target_id IN ({q})", ids + ids)
         self.conn.execute(f"DELETE FROM refs WHERE source_id IN ({q})", ids)
+        self.conn.execute(f"DELETE FROM vectors WHERE node_id IN ({q})", ids)
+        self.conn.execute(f"DELETE FROM usage WHERE node_id IN ({q})", ids)
         self.conn.execute(f"DELETE FROM nodes WHERE id IN ({q})", ids)
 
     # --- search / summaries / ranks ---

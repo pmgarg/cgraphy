@@ -79,8 +79,15 @@ def method_rank(db, query, limit=25):
     return ranked_files(rows), estimate_tokens(search(db, query))
 
 
-def method_expand(db, query, use_cochange=True, limit=25):
-    rows = db.search_fts(query, limit)
+def method_hybrid(db, query, limit=25):
+    from cgraphy import semantic
+    rows = [r for r in semantic.hybrid_search(db, query, limit) if r]
+    return ranked_files(rows), estimate_tokens(search(db, query))
+
+
+def method_expand(db, query, use_cochange=True, limit=25, rows=None):
+    if rows is None:
+        rows = db.search_fts(query, limit)
     direct = ranked_files(rows)
     scores = defaultdict(float)
     for hit in rows[:5]:
@@ -138,6 +145,14 @@ def main():
     results["expand-nc"] = score(
         tasks, lambda q: method_expand(db, q, use_cochange=False))
     results["expand"] = score(tasks, lambda q: method_expand(db, q))
+    from cgraphy import semantic
+    if semantic.available():
+        semantic.embed_missing(db)
+        results["hybrid"] = score(tasks, lambda q: method_hybrid(db, q))
+        results["hybrid-expand"] = score(
+            tasks, lambda q: method_expand(
+                db, q, rows=[r for r in
+                             semantic.hybrid_search(db, q, 25) if r]))
     db.close()
 
     hdr = f"{'method':<10} {'hit@5':>6} {'hit@10':>7} {'mrr':>6} {'tokens':>7}"
