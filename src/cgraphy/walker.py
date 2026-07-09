@@ -57,6 +57,8 @@ def iter_files(root):
             if d not in SKIP_DIRS and not d.startswith(".")
             and not (spec and spec.match_file(relpath(root, Path(dirpath) / d) + "/")))
         for fn in sorted(filenames):
+            if fn.endswith((".min.js", ".min.css", ".lock")):
+                continue
             p = Path(dirpath) / fn
             rel = relpath(root, p)
             if spec and spec.match_file(rel):

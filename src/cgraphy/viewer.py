@@ -38,6 +38,11 @@ def serve_viewer(root, port=8787):
 
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self):
+            # reject DNS-rebinding: only answer requests addressed to localhost
+            host = self.headers.get("Host", "").split(":", 1)[0]
+            if host not in ("localhost", "127.0.0.1", "[::1]"):
+                self.send_error(403)
+                return
             if self.path == "/graph.json":
                 db = GraphDB(db_path(root))
                 body = json.dumps(graph_json(db)).encode()

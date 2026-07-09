@@ -22,6 +22,9 @@
 <script>
 const COLORS = {file:"#8896c4", class:"#c48a5a", function:"#5aa66f",
                 method:"#5aa66f", module:"#999", variable:"#b06fb0"};
+// node fields originate from indexed source code — treat them as untrusted
+const esc = s => String(s ?? "").replace(/[&<>"']/g,
+  c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 fetch("/graph.json").then(r => r.json()).then(g => {
   const cy = cytoscape({
     container: document.getElementById("cy"),
@@ -46,10 +49,10 @@ fetch("/graph.json").then(r => r.json()).then(g => {
   cy.on("tap","node", evt => {
     const d = evt.target.data();
     document.getElementById("detail").innerHTML =
-      `<div class="kind">${d.kind}</div><h3>${d.label}</h3>` +
-      `<div>${d.file || ""}${d.line ? ":"+d.line : ""}</div>` +
-      `<p>${d.summary || "<i>no summary yet</i>"}</p>` +
-      `<div class="kind">rank ${(d.rank||0).toFixed(3)}</div>`;
+      `<div class="kind">${esc(d.kind)}</div><h3>${esc(d.label)}</h3>` +
+      `<div>${esc(d.file || "")}${d.line ? ":"+esc(d.line) : ""}</div>` +
+      (d.summary ? `<p>${esc(d.summary)}</p>` : "<p><i>no summary yet</i></p>") +
+      `<div class="kind">rank ${(+d.rank||0).toFixed(3)}</div>`;
     cy.elements().addClass("dim");
     evt.target.closedNeighborhood().removeClass("dim");
     cy.nodes().removeClass("hi"); evt.target.addClass("hi");

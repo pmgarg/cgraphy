@@ -24,6 +24,13 @@ def test_respects_gitignore_and_cgraphyignore(tmp_path):
     assert "ok.py" in got and "build/x.py" not in got and "vendor/y.py" not in got
 
 
+def test_skips_minified_and_lock_files(tmp_path):
+    make(tmp_path, "vendor.min.js"); make(tmp_path, "styles.min.css")
+    make(tmp_path, "uv.lock"); make(tmp_path, "ok.js")
+    got = {relpath(tmp_path, p) for p, _ in iter_files(tmp_path)}
+    assert got == {"ok.js"}
+
+
 def test_skips_dot_dirs_binaries_and_big_files(tmp_path):
     make(tmp_path, ".git/config"); make(tmp_path, ".cgraphy/graph.db")
     (tmp_path / "img.png").write_bytes(b"\x89PNG")
