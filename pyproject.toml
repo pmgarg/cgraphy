@@ -5,6 +5,7 @@ description = "Code knowledge graph over MCP: compact, token-budgeted context fo
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
+authors = [{ name = "Prateek Mohan Garg", email = "prateekmohangarg@gmail.com" }]
 dependencies = [
     "tree-sitter>=0.23",
     "tree-sitter-language-pack>=0.13",
