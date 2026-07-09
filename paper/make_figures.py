@@ -15,12 +15,14 @@ import matplotlib
 import matplotlib.pyplot as plt
 
 HERE = Path(__file__).parent
-RAMP = ["#86b6ef", "#5598e7", "#2a78d6", "#1c5cab"]  # fts→rank→expand-nc→expand
+# ordinal blue ramp, validated for 4 and 5 steps (more signal = darker)
+RAMP5 = ["#86b6ef", "#5598e7", "#2a78d6", "#1c5cab", "#104281"]
 INK, INK2, MUTED = "#0b0b0b", "#52514e", "#898781"
 GRID, BASE, SURFACE = "#e1e0d9", "#c3c2b7", "#fcfcfb"
-METHODS = ["fts", "rank", "expand-nc", "expand"]
 LABELS = {"fts": "FTS (lexical)", "rank": "+PageRank",
-          "expand-nc": "+expansion", "expand": "+co-change (full)"}
+          "expand-nc": "+expansion (no co-change)",
+          "expand": "+expansion (structural)",
+          "hybrid": "+semantic (hybrid)", "hybrid-expand": "full stack"}
 
 matplotlib.rcParams.update({
     "font.family": "sans-serif", "font.size": 9,
@@ -35,15 +37,21 @@ data = json.load(open(HERE / "results.json"))
 rows = data["localization_benchmark"]
 rows.sort(key=lambda r: -r["results"]["fts"]["hit@10"])
 repos = [r["repo"] for r in rows]
+has_hybrid = "hybrid" in rows[0]["results"]
+METHODS = (["fts", "rank", "expand", "hybrid", "hybrid-expand"]
+           if has_hybrid else ["fts", "rank", "expand-nc", "expand"])
+RAMP = RAMP5 if has_hybrid else [RAMP5[0], RAMP5[1], RAMP5[2], RAMP5[3]]
+FULL = "hybrid-expand" if has_hybrid else "expand"
 langs = {"click": "py", "requests": "py", "flask": "py", "fmt": "c++",
          "gin": "go", "ripgrep": "rust", "express": "js", "junit4": "java",
          "libuv": "c"}
 
 # ---- Fig 1: grouped bars ----
-fig, ax = plt.subplots(figsize=(6.4, 2.9), dpi=200)
-n, w = len(repos), 0.19
+fig, ax = plt.subplots(figsize=(6.8, 3.0), dpi=200)
+n, k = len(repos), len(METHODS)
+w = 0.8 / k
 for mi, m in enumerate(METHODS):
-    xs = [i + (mi - 1.5) * (w + 0.012) for i in range(n)]
+    xs = [i + (mi - (k - 1) / 2) * (w + 0.008) for i in range(n)]
     ys = [r["results"][m]["hit@10"] for r in rows]
     ax.bar(xs, ys, width=w, color=RAMP[mi], label=LABELS[m],
            edgecolor=SURFACE, linewidth=0.8, zorder=3)
@@ -54,8 +62,8 @@ ax.set_ylim(0, 1.0)
 ax.grid(axis="x", visible=False)
 for s in ("top", "right"):
     ax.spines[s].set_visible(False)
-ax.legend(frameon=False, ncol=4, loc="upper right", fontsize=7.5,
-          bbox_to_anchor=(1.0, 1.14), handlelength=1.2, columnspacing=0.9)
+ax.legend(frameon=False, ncol=min(k, 5), loc="upper right", fontsize=7,
+          bbox_to_anchor=(1.0, 1.15), handlelength=1.1, columnspacing=0.8)
 fig.tight_layout()
 fig.savefig(HERE / "fig_hit10.pdf", bbox_inches="tight")
 fig.savefig(HERE / "fig_hit10.png", bbox_inches="tight")
@@ -63,7 +71,7 @@ fig.savefig(HERE / "fig_hit10.png", bbox_inches="tight")
 # ---- Fig 2: gain vs baseline ----
 fig, ax = plt.subplots(figsize=(4.0, 2.9), dpi=200)
 xs = [r["results"]["fts"]["hit@10"] for r in rows]
-ys = [r["results"]["expand"]["hit@10"] - r["results"]["fts"]["hit@10"]
+ys = [r["results"][FULL]["hit@10"] - r["results"]["fts"]["hit@10"]
       for r in rows]
 ax.axhline(0, color=BASE, linewidth=1, zorder=2)
 ax.scatter(xs, ys, s=42, color=RAMP[3], zorder=3)
@@ -74,7 +82,7 @@ for r, x, y in zip(repos, xs, ys):
     ax.annotate(f"{r} ({langs[r]})", (x, y), textcoords="offset points",
                 xytext=(dx, dy), ha=ha, fontsize=7.5, color=INK2)
 ax.set_xlabel("lexical baseline strength (FTS hit@10)")
-ax.set_ylabel("graph-signal gain\n(full − FTS, hit@10)")
+ax.set_ylabel(f"gain of {LABELS[FULL]}\n(vs FTS, hit@10)")
 for s in ("top", "right"):
     ax.spines[s].set_visible(False)
 fig.tight_layout()

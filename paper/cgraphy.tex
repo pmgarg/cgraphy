@@ -11,7 +11,7 @@
 Context Layer for AI Coding Agents}
 \author{Prateek Mohan Garg\\
 \small\texttt{prateekmohangarg@gmail.com}}
-\date{July 2026 --- draft v0.2}
+\date{July 2026 --- draft v0.3}
 
 \begin{document}
 \maketitle
@@ -29,17 +29,22 @@ it as an instrument to answer that question. cgraphy contributes
 (2)~git co-change edges fused with the static graph under leakage control;
 (3)~an \emph{agent-self-enrichment} protocol in which the host agent writes
 persistent, content-hash-keyed semantic summaries --- no server-side LLM or
-API keys; and (4)~two reproducible, grading-free benchmarks: a
-commit-derived localization suite (450 tasks, 9 repositories, 7 languages)
-and an issue-driven suite built from SWE-bench~Lite instances evaluated at
-their pre-fix snapshots. Across 9 repositories, graph signals lift mean
-hit@10 from 0.602 (lexical baseline) to 0.662 --- with the gains
-concentrated where lexical search is weakest (+16 points on C++, +10 on
-JavaScript and Go) --- while every method answers in a few hundred to
-$\sim$1,200 tokens. On real private codebases, orientation via the graph is
-134--420$\times$ cheaper than reading the code. Our results argue for
-treating graph signals as measurable options rather than assumed wins, and
-for token-denominated evaluation of agent context systems.\footnote{Code,
+API keys; (4)~edit-loop tools (budgeted symbol reading, blast-radius
+impact analysis, diff-to-symbol review context) with usage-aware retrieval;
+(5)~optional hybrid retrieval fusing FTS with tiny static embeddings by
+reciprocal-rank fusion; and (6)~two reproducible, grading-free benchmarks:
+a commit-derived localization suite (450 tasks, 9 repositories,
+7 languages) and an issue-driven suite built from SWE-bench~Lite instances
+evaluated at their pre-fix snapshots. Across 9 repositories, the signal
+stack lifts mean hit@10 from 0.602 (lexical baseline) to 0.733, with
+semantic fusion the largest single contributor at zero added payload; on
+real GitHub issues the full stack gains +15.8 points hit@5 and hit@10
+(0.456 $\rightarrow$ 0.614). Gains concentrate where lexical search is
+weakest (C++ +28, JavaScript +24 hit@10) --- and on one repository fusion
+\emph{hurts}, underscoring that graph signals are measurable options, not
+assumed wins. Every configuration answers in a few hundred to
+$\sim$1{,}300 tokens; on real private codebases, orientation via the graph
+is 134--420$\times$ cheaper than reading the code.\footnote{Code,
 benchmarks, and data: \url{https://github.com/pmgarg/cgraphy}}
 \end{abstract}
 
@@ -91,12 +96,13 @@ its own graph), and a hard token budget on every answer.
         SWE-bench-Lite-derived (real GitHub issues, pre-fix snapshots) ---
         both with explicit leakage control for history-based signals
         (Section~\ref{sec:eval}).
-  \item \emph{Findings:} an ablation across four signal levels showing
-        (a)~lexical FTS is a strong baseline, (b)~graph gains concentrate
-        where lexical search is weak (C/C++/JS: header/impl splits and
-        terse naming), (c)~co-change helps only where history is dense, and
-        (d)~all configurations stay 1--3 orders of magnitude cheaper than
-        reading code (Section~\ref{sec:results}).
+  \item \emph{Findings:} an ablation across six signal levels showing
+        (a)~lexical FTS is a strong baseline, (b)~semantic fusion is the
+        largest single signal and costs zero extra payload, (c)~graph gains
+        concentrate where lexical search is weak (C/C++/JS/Java), including
+        one repository where fusion hurts, (d)~co-change helps only where
+        history is dense, and (e)~all configurations stay 1--3 orders of
+        magnitude cheaper than reading code (Section~\ref{sec:results}).
   \item \emph{Practice:} deployment mechanics that research systems omit:
         agent steering via instruction files, staleness-driven incremental
         re-indexing, and content sniffing that survives real user
@@ -169,14 +175,39 @@ mechanism needs no server-side LLM, works in every MCP client (unlike MCP
 sampling, which few clients implement), and turns enrichment into an
 idle-time agent task.
 
-\textbf{Serving and steering.} \texttt{cgraphy serve} exposes five tools
+\textbf{Hybrid semantic retrieval (optional).} Static
+model2vec embeddings (CPU-only, no torch; \texttt{cgraphy[semantic]})
+are computed per node at index time and fused with FTS5 rankings by
+reciprocal-rank fusion, which requires no score calibration. This targets
+the vocabulary gap between issue-style prose and code identifiers that our
+evaluation identifies as lexical search's dominant failure mode.
+
+\textbf{Subsystems and lineage.} Deterministic label propagation over the
+file graph yields subsystem communities surfaced in the overview (a
+repo$\rightarrow$subsystem$\rightarrow$symbol zoom); dataset files (CSV
+headers, SQL \texttt{CREATE TABLE}s) receive deterministic schema
+summaries, making data directories searchable alongside code.
+
+\textbf{Edit-loop tools.} Beyond orientation, three tools serve the
+change cycle: \texttt{cgraphy\_read} returns one symbol's line-numbered
+source under a budget (replacing whole-file reads);
+\texttt{cgraphy\_impact} computes the blast radius of a proposed change ---
+transitive dependents, tests likely affected, historically co-changed
+files; \texttt{cgraphy\_diff\_context} maps the working git diff to the
+exact symbols touched, their users, and covering tests. Retrieval is
+\emph{usage-aware}: symbols an agent repeatedly focuses on receive a
+small, capped priority boost in later expansions (telemetry never leaves
+the local database).
+
+\textbf{Serving and steering.} \texttt{cgraphy serve} exposes eight tools
 over stdio MCP; \texttt{cgraphy init} installs project configuration
 (\texttt{.mcp.json}) plus steering blocks in
 \texttt{CLAUDE.md}/\texttt{AGENTS.md} that direct agents to consult the
-graph before reading files --- servers cannot force tool use, only steer
-it. Tools self-heal: a cheap staleness check triggers incremental
-re-indexing before answering. \texttt{cgraphy view} renders the graph
-locally for humans (Cytoscape.js, no CDN).
+graph before reading files and to check impact before editing shared code
+--- servers cannot force tool use, only steer it. Tools self-heal: a cheap
+staleness check triggers incremental re-indexing before answering.
+\texttt{cgraphy view} renders the graph locally for humans (Cytoscape.js,
+no CDN).
 
 \section{Evaluation Design}\label{sec:eval}
 Both benchmarks are objective (no LLM judging, no human grading) and
@@ -207,35 +238,47 @@ mean retrieval payload in tokens.
 \begin{table}[t]
 \centering
 \caption{Commit-derived localization: 50 fix-commits per repository
-(July 2026 snapshots). Best per repo in bold.}
+(July 2026 snapshots). \textsc{full} = hybrid semantic fusion + graph
+expansion. Best per repo in bold.}
 \small
 \begin{tabular}{llcccc}
 \toprule
 Repo (lang) & Method & hit@5 & hit@10 & MRR & Tokens \\
 \midrule
-click (py)    & \textsc{fts} & 0.76 & 0.76 & 0.589 & 380 \\
-              & \textsc{expand} & \textbf{0.80} & \textbf{0.82} & \textbf{0.609} & 1{,}239 \\
-requests (py) & \textsc{fts} & 0.70 & 0.74 & 0.476 & 371 \\
-              & \textsc{expand} & 0.70 & \textbf{0.76} & 0.478 & 1{,}186 \\
-flask (py)    & \textsc{fts} & 0.46 & 0.54 & 0.288 & 282 \\
-              & \textsc{expand} & 0.46 & 0.54 & \textbf{0.297} & 652 \\
-fmt (c++)     & \textsc{fts} & 0.32 & 0.44 & 0.191 & 264 \\
-              & \textsc{expand} & \textbf{0.48} & \textbf{0.60} & \textbf{0.251} & 951 \\
-gin (go)      & \textsc{fts} & 0.70 & 0.74 & 0.588 & 248 \\
-              & \textsc{expand} & \textbf{0.78} & \textbf{0.84} & \textbf{0.622} & 1{,}053 \\
-ripgrep (rust)& \textsc{fts} & 0.66 & 0.72 & \textbf{0.476} & 358 \\
-              & \textsc{expand} & 0.66 & \textbf{0.74} & 0.447 & 1{,}236 \\
-express (js)  & \textsc{fts} & 0.42 & 0.42 & 0.332 & 148 \\
-              & \textsc{expand} & \textbf{0.50} & \textbf{0.52} & \textbf{0.342} & 603 \\
-junit4 (java) & \textsc{fts} & \textbf{0.48} & 0.52 & 0.410 & 484 \\
-              & \textsc{expand} & 0.46 & 0.52 & \textbf{0.424} & 1{,}070 \\
-libuv (c)     & \textsc{fts} & \textbf{0.52} & 0.54 & \textbf{0.460} & 307 \\
-              & \textsc{expand} & 0.50 & \textbf{0.62} & 0.451 & 1{,}205 \\
+click (py)    & \textsc{fts} & 0.76 & 0.76 & 0.589 & 406 \\
+              & \textsc{expand} & 0.80 & 0.82 & 0.609 & 1{,}264 \\
+              & \textsc{full} & \textbf{0.80} & \textbf{0.88} & \textbf{0.671} & 1{,}281 \\
+requests (py) & \textsc{fts} & 0.70 & 0.74 & 0.476 & 415 \\
+              & \textsc{expand} & 0.70 & 0.76 & 0.478 & 1{,}233 \\
+              & \textsc{full} & \textbf{0.76} & \textbf{0.82} & \textbf{0.582} & 1{,}260 \\
+flask (py)    & \textsc{fts} & 0.46 & 0.54 & 0.288 & 354 \\
+              & \textsc{expand} & 0.46 & 0.54 & 0.297 & 724 \\
+              & \textsc{full} & \textbf{0.48} & \textbf{0.56} & \textbf{0.382} & 958 \\
+fmt (c++)     & \textsc{fts} & 0.32 & 0.44 & 0.191 & 349 \\
+              & \textsc{expand} & 0.48 & 0.60 & 0.251 & 1{,}035 \\
+              & \textsc{full} & \textbf{0.54} & \textbf{0.72} & \textbf{0.296} & 1{,}043 \\
+gin (go)      & \textsc{fts} & 0.70 & 0.74 & 0.588 & 291 \\
+              & \textsc{expand} & 0.78 & 0.84 & 0.622 & 1{,}094 \\
+              & \textsc{full} & \textbf{0.86} & \textbf{0.96} & \textbf{0.718} & 1{,}090 \\
+ripgrep (rust)& \textsc{fts} & \textbf{0.66} & 0.72 & \textbf{0.476} & 363 \\
+              & \textsc{expand} & \textbf{0.66} & \textbf{0.74} & 0.447 & 1{,}245 \\
+              & \textsc{full} & 0.58 & 0.66 & 0.455 & 1{,}118 \\
+express (js)  & \textsc{fts} & 0.42 & 0.42 & 0.332 & 207 \\
+              & \textsc{expand} & 0.50 & 0.52 & 0.342 & 662 \\
+              & \textsc{full} & \textbf{0.52} & \textbf{0.66} & \textbf{0.417} & 720 \\
+junit4 (java) & \textsc{fts} & 0.48 & 0.52 & 0.410 & 574 \\
+              & \textsc{expand} & 0.46 & 0.52 & 0.424 & 1{,}159 \\
+              & \textsc{full} & \textbf{0.66} & \textbf{0.68} & \textbf{0.516} & 1{,}171 \\
+libuv (c)     & \textsc{fts} & 0.52 & 0.54 & \textbf{0.460} & 319 \\
+              & \textsc{expand} & 0.50 & 0.62 & 0.451 & 1{,}216 \\
+              & \textsc{full} & \textbf{0.60} & \textbf{0.66} & 0.450 & 1{,}232 \\
 \midrule
-\textbf{mean (9 repos)} & \textsc{fts} & 0.558 & 0.602 & 0.423 & 316 \\
- & \textsc{rank} & 0.571 & 0.629 & 0.426 & 316 \\
- & \textsc{expand-nc} & 0.584 & 0.653 & 0.433 & 1{,}022 \\
- & \textsc{expand} & \textbf{0.593} & \textbf{0.662} & \textbf{0.436} & 1{,}022 \\
+\textbf{mean}    & \textsc{fts} & 0.558 & 0.602 & 0.423 & 364 \\
+\textbf{(9 repos)} & \textsc{rank} & 0.571 & 0.629 & 0.426 & 364 \\
+ & \textsc{expand-nc} & 0.584 & 0.653 & 0.433 & 1{,}070 \\
+ & \textsc{expand} & 0.593 & 0.662 & 0.436 & 1{,}070 \\
+ & \textsc{hybrid} & 0.642 & 0.724 & 0.495 & 364 \\
+ & \textsc{full} & \textbf{0.644} & \textbf{0.733} & \textbf{0.499} & 1{,}097 \\
 \bottomrule
 \end{tabular}
 \label{tab:loc}
@@ -244,19 +287,19 @@ libuv (c)     & \textsc{fts} & \textbf{0.52} & 0.54 & \textbf{0.460} & 307 \\
 \begin{figure}[t]
 \centering
 \includegraphics[width=\linewidth]{fig_hit10.pdf}
-\caption{hit@10 by repository and ablation level (darker = more graph
-signal), sorted by lexical-baseline strength. Graph signals help most at
-the weak end.}
+\caption{hit@10 by repository and ablation level (darker = more signal),
+sorted by lexical-baseline strength. The stack helps most at the weak end;
+ripgrep is the honest counterexample.}
 \label{fig:hit10}
 \end{figure}
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.72\linewidth]{fig_gain.pdf}
-\caption{Graph-signal gain versus lexical baseline strength. The largest
-gains (fmt +16, express +10, gin +10 points hit@10) occur where bm25 is
-weakest or naming is terse; where lexical search already succeeds, the
-graph adds little accuracy --- but still collapses token cost.}
+\caption{Full-stack gain versus lexical baseline strength. The largest
+gains (fmt +28, express +24, gin +22 points hit@10) occur where bm25 is
+weakest or naming is terse; on ripgrep the stack \emph{loses} to lexical
+--- signal utility is repository-dependent and worth measuring.}
 \label{fig:gain}
 \end{figure}
 
@@ -264,17 +307,25 @@ graph adds little accuracy --- but still collapses token cost.}
 Figures~\ref{fig:hit10}--\ref{fig:gain}).}
 Across 450 tasks, mean hit@10 rises monotonically along the ablation
 ladder: 0.602 (\textsc{fts}) $\rightarrow$ 0.629 (+PageRank, free)
-$\rightarrow$ 0.653 (+expansion) $\rightarrow$ 0.662 (+co-change). Three
-patterns stand out. \emph{First}, gains concentrate where the lexical
-baseline is weak: fmt (C++) gains +16 points hit@5 and hit@10 from
-structural expansion --- C++'s header/implementation split means the file
-naming a symbol is often not the file changed --- and express (JS) gains
-+10 hit@10. \emph{Second}, PageRank is the only free signal (same payload)
-and is never harmful on hit@10, adding up to +10 points (gin) and +8
-(libuv). \emph{Third}, co-change contributes on repositories with dense,
-convention-following histories (click: +4 hit@5/hit@10; express: +4
-hit@5) and nothing elsewhere --- consistent with its dependence on commit
-hygiene.
+$\rightarrow$ 0.662 (+expansion/co-change) $\rightarrow$ 0.724 (+semantic
+fusion) $\rightarrow$ \textbf{0.733} (full stack) --- a +13.1-point total
+gain, with +8.6 hit@5 and +0.076 MRR. Four patterns stand out.
+\emph{First}, semantic fusion is the single largest signal and costs
+nothing extra: the \textsc{hybrid} rung uses the same payload as
+\textsc{fts} (364 tokens mean) yet adds +12.2 points hit@10, with the
+biggest jumps exactly where identifiers and prose diverge (junit4 +18
+hit@5; express +24 hit@10 over \textsc{fts}; fmt +26 with expansion).
+\emph{Second}, gains concentrate where the lexical baseline is weak
+(Figure~\ref{fig:gain}): C++'s header/implementation split and JavaScript's
+terse naming defeat bm25, and the graph supplies what naming does not.
+\emph{Third}, PageRank is free and never harmful on hit@10 (up to +10 on
+gin); co-change contributes where history is dense (click +4).
+\emph{Fourth}, the signals are not universally additive: on ripgrep,
+fusion \emph{hurts} (0.72 $\rightarrow$ 0.66 hit@10) --- Rust's
+already-precise identifiers make lexical rank the better prior, and RRF
+dilutes it. Signal utility is measurable, repo-dependent, and worth
+measuring per codebase --- precisely the argument for shipping the
+benchmark with the tool.
 
 \begin{table}[t]
 \centering
@@ -286,10 +337,12 @@ snapshot with real GitHub issue text as the query.}
 \toprule
 Method & hit@5 & hit@10 & MRR & Tokens \\
 \midrule
-\textsc{fts}       & 0.333 & 0.456 & 0.239 & 444 \\
-\textsc{rank}      & 0.333 & 0.456 & 0.239 & 444 \\
-\textsc{expand-nc} & \textbf{0.351} & \textbf{0.491} & \textbf{0.246} & 1{,}301 \\
-\textsc{expand}    & \textbf{0.351} & \textbf{0.491} & \textbf{0.246} & 1{,}301 \\
+\textsc{fts}       & 0.333 & 0.456 & 0.239 & 450 \\
+\textsc{rank}      & 0.333 & 0.456 & 0.239 & 450 \\
+\textsc{expand-nc} & 0.351 & 0.491 & 0.246 & 1{,}308 \\
+\textsc{expand}    & 0.351 & 0.491 & 0.246 & 1{,}308 \\
+\textsc{hybrid}    & \textbf{0.491} & 0.579 & 0.301 & 450 \\
+\textsc{full}      & \textbf{0.491} & \textbf{0.614} & \textbf{0.306} & 1{,}298 \\
 \bottomrule
 \end{tabular}
 \label{tab:swe}
@@ -298,16 +351,15 @@ Method & hit@5 & hit@10 & MRR & Tokens \\
 \textbf{Issue-driven suite (SWE-bench Lite, Table~\ref{tab:swe}).}
 Real issue texts are markedly harder than commit subjects: the lexical
 baseline drops to hit@10 0.456 (from 0.602 on the commit suite), because
-user-written reports describe symptoms in prose that shares less
-vocabulary with code identifiers. Here one-hop structural expansion
-provides the only lift (+3.5 points hit@10, +1.8 hit@5); PageRank blending
-and co-change edges contribute nothing --- pre-fix histories at
-often-years-old base commits offer sparse pair support for the files in
-question. Per-project variance is wide (hit@10 with \textsc{expand}: flask
-1.00, requests 0.83, sphinx 0.69, seaborn 0.50, pytest 0.29, xarray 0.20,
-pylint 0.17), tracking repository size and the drift between issue
-vocabulary and identifiers. We emphasize the operating point: these are
-single-shot, sub-second, LLM-free retrievals costing 444--1{,}301 tokens
+user-written reports describe symptoms in prose that shares little
+vocabulary with code identifiers. This is exactly the regime where
+semantic fusion earns its keep: \textsc{hybrid} adds \textbf{+15.8 points
+hit@5} (0.333 $\rightarrow$ 0.491) and +12.3 hit@10 at the same payload as
+\textsc{fts}, and the full stack reaches \textbf{0.614 hit@10} (+15.8 over
+lexical, +12.3 over the best structural rung). PageRank and co-change
+contribute little here --- pre-fix histories at often-years-old base
+commits offer sparse support. We emphasize the operating point: these are
+single-shot, sub-second, LLM-free retrievals costing 450--1{,}300 tokens
 that seed an agent's \emph{first} tool call; LLM-in-the-loop localization
 agents~\cite{locagent} report higher file accuracy at orders of magnitude
 more tokens, and the two are complementary layers, not competitors.
@@ -342,22 +394,29 @@ against a strong lexical baseline and repository-dependent, and we frame
 them accordingly. The SWE-bench-derived suite measures localization, not
 end-to-end issue resolution; running full SWE-bench with an agent steered
 by cgraphy is the next experiment and requires substantial compute.
-Token counts use a 4-chars/token estimate. Summarization quality is not
-evaluated here (summaries were empty during benchmarks; all gains are
-structural, which makes the reported numbers a lower bound on what
-enriched graphs could achieve).
+Token counts use a 4-chars/token estimate. Agent-written summaries were
+empty during all benchmarks: embeddings covered only names, qualified
+names, and signatures, and expansion used only structural text --- so the
+reported numbers are a lower bound on what an enriched graph could
+achieve. Usage-aware reweighting is implemented but unevaluated (it
+requires longitudinal agent traces); the RRF fusion weights and the
+ripgrep regression suggest per-repository signal calibration as concrete
+future work.
 
 \section{Conclusion}
 cgraphy packages code knowledge graphs as a zero-infrastructure,
-any-agent, token-budgeted context layer, and uses two objective benchmarks
-to decompose which graph signals earn their tokens: PageRank (free, small,
-consistent), structural expansion (moderate cost, largest gains exactly
-where lexical retrieval fails --- C++, JS), and co-change (history-quality
-dependent). The token economy --- hundreds of tokens per query against
-134--420$\times$ more for reading code --- is the unconditional win.
-Roadmap: hierarchical community summaries, usage-feedback edge
-reweighting, data-lineage nodes, summary-quality evaluation, and full
-SWE-bench agent runs.
+any-agent, token-budgeted context layer spanning both the reading loop
+(overview, search, context, symbol-level reads) and the editing loop
+(impact analysis, diff review), and uses two objective benchmarks to
+decompose which signals earn their tokens: semantic fusion (largest,
+free at query time, occasionally harmful), PageRank (small, free,
+consistent), structural expansion (moderate cost, biggest where lexical
+retrieval fails), and co-change (history-quality dependent). The token
+economy --- hundreds of tokens per query against 134--420$\times$ more for
+reading code --- is the unconditional win. Remaining roadmap: evaluating
+usage-feedback reweighting on longitudinal traces, summary-quality
+evaluation after agent enrichment, per-repository signal calibration, and
+full SWE-bench agent runs.
 
 \begin{thebibliography}{12}
 \bibitem{repograph} Ouyang, S., et al. RepoGraph: Enhancing AI Software
