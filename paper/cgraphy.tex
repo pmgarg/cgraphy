@@ -1,0 +1,271 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{listings}
+\usepackage{xcolor}
+
+\title{cgraphy: Token-Budgeted Code Knowledge Graphs as a Portable\\
+Context Layer for AI Coding Agents}
+\author{Prateek Garg\\
+\small\texttt{prateekmohangarg@gmail.com}}
+\date{July 2026 --- draft v0.1}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+AI coding agents spend most of their context window re-reading source files
+to orient themselves, a cost that recurs on every prompt and grows with
+repository size. We present \textbf{cgraphy}, an open-source system that
+indexes a repository of any language into a lightweight knowledge graph ---
+symbols and files as nodes; calls, imports, inheritance, and git co-change
+history as weighted edges --- and serves it to any agent through the Model
+Context Protocol (MCP). cgraphy contributes three mechanisms:
+(1)~\emph{importance-weighted, token-budgeted subgraph extraction}, where
+context cost scales with the question rather than the repository;
+(2)~\emph{co-change edges} mined from version history, fused with the static
+graph at retrieval time; and (3)~an \emph{agent-self-enrichment loop} in
+which the host agent itself writes persistent, content-hash-keyed semantic
+summaries through MCP tools, requiring no separate LLM credentials.
+On a commit-derived file-localization benchmark over three open-source
+repositories (150 tasks), graph-expanded retrieval answers with
+282--1,239 tokens per query --- one to two orders of magnitude less than
+reading the code --- while lexical search proves a strong baseline
+(hit@5 0.46--0.76) that graph signals improve modestly and
+repo-dependently (up to +4~points hit@5 from co-change edges).
+We release the system, benchmark, and harness to support the study of
+\emph{which} graph signals actually pay for their tokens in agentic code
+retrieval.\footnote{\url{https://github.com/prateekgarg/cgraphy} (placeholder --- update on release)}
+\end{abstract}
+
+\section{Introduction}
+Modern coding agents (Claude Code, Codex, Gemini CLI, Cursor) operate by
+iteratively listing directories, grepping, and reading files. This
+\emph{exploration tax} is paid in tokens on every task: the agent
+reconstructs, from raw text, a mental model that is almost entirely stable
+across prompts --- what the modules are, who calls whom, where the important
+entry points live. For large repositories the tax dominates context budgets;
+for vague prompts (``fix the login bug'') it multiplies, because the agent
+does not know where to begin.
+
+A natural response is to precompute that mental model once, store it as a
+graph, and let the agent query it. Recent systems validate the idea:
+RepoGraph~\cite{repograph} plugs a line-level Python code graph into
+SWE-bench agents; CodexGraph~\cite{codexgraph} lets an agent query a code
+graph database; LocAgent~\cite{locagent} frames localization as graph-guided
+search; Codebase-Memory~\cite{codebasememory} serves a tree-sitter knowledge
+graph over MCP and reports order-of-magnitude token savings at a modest
+quality cost; and the practitioner tool Aider popularized PageRank-ranked,
+token-budgeted repository maps~\cite{aider}. Classic mining-software-repositories
+work established that files which changed together in the past change
+together in the future~\cite{zimmermann,gall}.
+
+cgraphy composes these threads into a single portable layer and asks a
+question the prior systems leave open: \emph{which graph signals ---
+importance ranking, structural expansion, historical co-change --- actually
+improve retrieval enough to justify their tokens?} Our design goals are
+strict: any language, any agent, zero infrastructure (one SQLite file), zero
+credentials (the host agent enriches its own graph), and a hard token budget
+on every answer.
+
+Contributions:
+\begin{enumerate}
+  \item A language-agnostic code knowledge graph with two-tier tree-sitter
+        extraction (full call/import/inheritance fidelity for 7 languages;
+        generic definitions for any grammar), PageRank importance scores,
+        and git co-change edges, served over MCP to all major coding agents.
+  \item Token-budgeted greedy subgraph extraction: best-first expansion by
+        $\mathit{edge\ weight}\times(0.5+\mathit{rank})$ with depth decay,
+        halting exactly at a caller-specified budget.
+  \item An agent-self-enrichment protocol: \texttt{enrich}/\texttt{store}
+        MCP tools through which the host agent generates one-line semantic
+        summaries that persist across re-indexing via content hashing ---
+        no API keys, works identically in every MCP client.
+  \item A reproducible, no-human-grading localization benchmark derived from
+        commit history (with leakage control for co-change mining), plus an
+        ablation study across 150 tasks and three repositories.
+\end{enumerate}
+
+\section{Related Work}
+\textbf{Repository-level graphs for agents.}
+RepoGraph~\cite{repograph} constructs line-level Python graphs and improves
+SWE-bench agents via ego-graph retrieval. CodexGraph~\cite{codexgraph}
+interfaces agents with a graph database through query languages.
+LocAgent~\cite{locagent} performs graph-guided localization.
+Codebase-Memory~\cite{codebasememory}, the closest system to ours, serves a
+66-language tree-sitter graph over MCP with Louvain communities and git
+co-change edges, evaluated by author-graded answer quality across 31
+repositories. cgraphy differs in mechanism --- importance-weighted
+\emph{budgeted} extraction, LLM semantic summaries written by the host agent
+itself, and rank-blended search --- and in evaluation: an objective,
+commit-derived benchmark with signal ablations rather than graded QA.
+\textbf{Token-budgeted repo maps.} Aider~\cite{aider} pioneered
+PageRank-over-tree-sitter maps fitted to a token budget inside one CLI tool;
+cgraphy generalizes the idea to a queryable, protocol-standard service with
+per-query budgets. \textbf{Change coupling.} Logical coupling from version
+history is classic MSR~\cite{gall,zimmermann}; we test its marginal value for
+agent-facing retrieval under leakage control. \textbf{Retrieval for code
+agents.} Agentless~\cite{agentless} showed simple retrieval pipelines rival
+agentic exploration; our finding that lexical FTS is a strong baseline is
+consistent. GraphRAG~\cite{graphrag} popularized hierarchical community
+summaries for corpora; our roadmap ports this to code. SWE-bench~\cite{swebench}
+is the standard end-to-end benchmark; our harness measures the retrieval
+sub-problem at near-zero cost and no LLM dependency.
+
+\section{System}
+\textbf{Indexing.} \texttt{cgraphy index} walks the repository (honoring
+\texttt{.gitignore}/\texttt{.cgraphyignore}; skipping binaries, minified and
+lock files), parses each file with tree-sitter, and writes nodes
+(\texttt{file}, \texttt{class}, \texttt{function}, \texttt{method}) and edges
+(\texttt{contains}, \texttt{calls}, \texttt{imports}, \texttt{inherits}) to a
+single SQLite database with an FTS5 index over names and summaries. Tier-1
+query specifications cover Python, JavaScript/TypeScript, Java, Go, C, C++,
+and Rust; a generic AST walk extracts definitions for any other grammar.
+Re-indexing is incremental by content hash (milliseconds after single-file
+edits); cross-file references resolve by qualified name, best-effort, with
+unresolved names retained rather than dropped.
+
+\textbf{Ranking.} After each index we run weighted PageRank (pure Python,
+30 iterations) over all non-containment edges; scores order the repository
+overview and re-rank search:
+$\mathrm{score} = \mathrm{bm25} - 5.0 \cdot \mathrm{rank}$.
+
+\textbf{Co-change edges.} \texttt{--git-history} parses \texttt{git log
+--name-only} (up to 3{,}000 commits), counts file pairs co-occurring in
+commits (support $\geq 3$; commits touching $>50$ files discarded), and adds
+\texttt{co\_changes} edges weighted by normalized frequency.
+
+\textbf{Budgeted context.} \texttt{cgraphy\_context(symbol, budget)}
+performs best-first expansion from the target node using a priority of
+$w \cdot (0.5 + \mathit{rank}) \cdot 0.6^{\,\mathrm{depth}}$, emitting
+compact node lines (kind, qualified name, location, summary-or-signature)
+until the token budget (estimated at 4 characters/token) is exhausted.
+
+\textbf{Agent self-enrichment.} Nodes gain one-line semantic summaries
+through a two-tool loop: \texttt{cgraphy\_enrich} returns unsummarized
+symbols (importance-first) with source snippets and instructions;
+\texttt{cgraphy\_store\_summaries} persists the agent's summaries keyed by a
+SHA-256 of the symbol's source, so editing one function invalidates only its
+own summary. The mechanism runs on the host agent's own model in any MCP
+client --- no server-side LLM, keys, or billing --- and is complementary to
+MCP sampling, which many clients do not implement.
+
+\textbf{Serving and steering.} \texttt{cgraphy serve} exposes five tools
+over stdio MCP. Because a server cannot force an agent to prefer it,
+\texttt{cgraphy init} also installs project-scoped configuration
+(\texttt{.mcp.json}) and steering blocks in \texttt{CLAUDE.md}/%
+\texttt{AGENTS.md} instructing agents to consult the graph before reading
+files. A local viewer (\texttt{cgraphy view}) renders the same graph for
+humans.
+
+\section{Evaluation}
+\subsection{Token economy}
+On cgraphy's own repository, answering an orientation query via
+\texttt{overview} + \texttt{search} + \texttt{context} costs 1{,}717 tokens
+versus 17{,}268 tokens for reading all source files --- a $10.1\times$
+reduction that grows with repository size (the denominator is linear in the
+repo; the numerator is budget-capped).
+
+\subsection{Commit-derived localization benchmark}
+\textbf{Design.} From each repository's history we select recent
+``fix-like'' commits (subject matches a bug-fix lexicon; 1--5 code files
+changed; files still present at HEAD). The commit subject is the query; the
+touched files are ground truth. Co-change mining \emph{excludes the
+evaluated commits} to prevent leakage. Metrics: hit@$k$ (a ground-truth file
+appears in the top $k$ retrieved files), MRR of the first ground-truth hit,
+and mean retrieval payload in tokens. The benchmark requires no LLM calls
+and no human grading, making it fully reproducible.
+
+\textbf{Methods.} An ablation ladder: \textsc{fts} (FTS5 bm25 only);
+\textsc{rank} (bm25 blended with PageRank --- cgraphy's default search);
+\textsc{expand-nc} (\textsc{rank} + one-hop weighted graph expansion,
+co-change edges removed); \textsc{expand} (full graph).
+
+\begin{table}[h]
+\centering
+\caption{File localization on 50 fix-commits per repository (July 2026
+snapshots). Tokens = mean retrieval payload per query.}
+\begin{tabular}{llcccc}
+\toprule
+Repo & Method & hit@5 & hit@10 & MRR & Tokens \\
+\midrule
+click    & \textsc{fts}       & 0.76 & 0.76 & 0.589 & 380 \\
+         & \textsc{rank}      & 0.76 & 0.76 & 0.598 & 380 \\
+         & \textsc{expand-nc} & 0.76 & 0.78 & 0.600 & 1{,}239 \\
+         & \textsc{expand}    & \textbf{0.80} & \textbf{0.82} & \textbf{0.609} & 1{,}239 \\
+\midrule
+requests & \textsc{fts}       & 0.70 & 0.74 & 0.476 & 371 \\
+         & \textsc{rank}      & 0.70 & 0.74 & 0.476 & 371 \\
+         & \textsc{expand-nc} & 0.70 & \textbf{0.76} & 0.478 & 1{,}186 \\
+         & \textsc{expand}    & 0.70 & \textbf{0.76} & 0.478 & 1{,}186 \\
+\midrule
+flask    & \textsc{fts}       & 0.46 & 0.54 & 0.288 & 282 \\
+         & \textsc{rank}      & 0.46 & 0.54 & \textbf{0.297} & 282 \\
+         & \textsc{expand-nc} & 0.46 & 0.54 & \textbf{0.297} & 652 \\
+         & \textsc{expand}    & 0.46 & 0.54 & \textbf{0.297} & 652 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Findings.}
+(1)~\emph{Lexical search is a strong baseline}: commit-style queries share
+vocabulary with the code they touch, echoing Agentless~\cite{agentless}.
+(2)~\emph{PageRank blending yields small, consistent MRR gains} at zero
+token cost.
+(3)~\emph{Graph expansion helps hit@10 modestly} (+2pts on two of three
+repos) at $\sim$3$\times$ the payload.
+(4)~\emph{Co-change edges are the largest single signal where history is
+dense}: on click they add +4~points hit@5 and hit@10 over structural
+expansion alone; on requests and flask their marginal value is nil ---
+signal utility is repository-dependent.
+(5)~All methods answer in 282--1{,}239 tokens; the value of the graph layer
+lies first in \emph{token economy at quality parity}, with graph signals as
+modest accuracy additions.
+
+\section{Limitations and Threats to Validity}
+Queries derive from commit subjects, which are terser than real user
+prompts, and ground truth is the fixing commit's file set (necessary, not
+always sufficient). Three Python-dominant repositories limit generality;
+the two-tier extractor's Tier-2 fidelity is unmeasured. Effects are small
+relative to the lexical baseline and repository-dependent; we report them
+with that framing rather than claiming uniform superiority. End-to-end
+agent outcomes (SWE-bench task success with and without cgraphy steering)
+are the necessary next experiment; our harness measures the retrieval
+sub-problem only. Token estimates use a 4-chars/token approximation.
+
+\section{Conclusion}
+cgraphy packages code knowledge graphs as a zero-infrastructure, any-agent
+context layer with hard token budgets, historical co-change signal, and
+agent-written semantics. Its honest empirical story --- large token savings,
+strong lexical baselines, modest and repo-dependent graph gains --- argues
+for treating graph signals as measurable options rather than assumed wins.
+Roadmap: hierarchical community summaries (GraphRAG-for-code),
+usage-feedback edge reweighting from agent retrieval logs, data-lineage
+nodes for data directories, and end-to-end SWE-bench evaluation.
+
+\begin{thebibliography}{10}
+\bibitem{repograph} Ouyang, S., et al. RepoGraph: Enhancing AI Software
+Engineering with Repository-level Code Graph. arXiv:2410.14684, 2024.
+\bibitem{codexgraph} Liu, X., et al. CodexGraph: Bridging Large Language
+Models and Code Repositories via Code Graph Databases. arXiv:2408.03910, 2024.
+\bibitem{locagent} Chen, Z., et al. LocAgent: Graph-Guided LLM Agents for
+Code Localization. arXiv:2503.09089, 2025.
+\bibitem{codebasememory} Codebase-Memory: Tree-Sitter-Based Knowledge Graphs
+for LLM Code Exploration via MCP. arXiv:2603.27277, 2026.
+\bibitem{aider} Gauthier, P. Building a better repository map with
+tree-sitter. aider.chat, 2023. \url{https://aider.chat/2023/10/22/repomap.html}
+\bibitem{zimmermann} Zimmermann, T., et al. Mining Version Histories to
+Guide Software Changes. ICSE 2004.
+\bibitem{gall} Gall, H., Hajek, K., Jazayeri, M. Detection of Logical
+Coupling Based on Product Release History. ICSM 1998.
+\bibitem{agentless} Xia, C., et al. Agentless: Demystifying LLM-based
+Software Engineering Agents. arXiv:2407.01489, 2024.
+\bibitem{graphrag} Edge, D., et al. From Local to Global: A Graph RAG
+Approach to Query-Focused Summarization. arXiv:2404.16130, 2024.
+\bibitem{swebench} Jimenez, C., et al. SWE-bench: Can Language Models
+Resolve Real-World GitHub Issues? ICLR 2024.
+\end{thebibliography}
+
+\end{document}

@@ -1,0 +1,28 @@
+{
+  "date": "2026-07-09",
+  "token_economy_self_benchmark": {
+    "repo": "cgraphy (self)",
+    "query": "graph search",
+    "cgraphy_tokens": 1717,
+    "read_all_code_tokens": 17268,
+    "reduction_factor": 10.1
+  },
+  "localization_benchmark": [
+    {"repo": "click", "tasks": 50, "results": {
+      "fts": {"hit@5": 0.76, "hit@10": 0.76, "mrr": 0.589, "avg_tokens": 380},
+      "rank": {"hit@5": 0.76, "hit@10": 0.76, "mrr": 0.598, "avg_tokens": 380},
+      "expand-nc": {"hit@5": 0.76, "hit@10": 0.78, "mrr": 0.6, "avg_tokens": 1239},
+      "expand": {"hit@5": 0.8, "hit@10": 0.82, "mrr": 0.609, "avg_tokens": 1239}}},
+    {"repo": "requests", "tasks": 50, "results": {
+      "fts": {"hit@5": 0.7, "hit@10": 0.74, "mrr": 0.476, "avg_tokens": 371},
+      "rank": {"hit@5": 0.7, "hit@10": 0.74, "mrr": 0.476, "avg_tokens": 371},
+      "expand-nc": {"hit@5": 0.7, "hit@10": 0.76, "mrr": 0.478, "avg_tokens": 1186},
+      "expand": {"hit@5": 0.7, "hit@10": 0.76, "mrr": 0.478, "avg_tokens": 1186}}},
+    {"repo": "flask", "tasks": 50, "results": {
+      "fts": {"hit@5": 0.46, "hit@10": 0.54, "mrr": 0.288, "avg_tokens": 282},
+      "rank": {"hit@5": 0.46, "hit@10": 0.54, "mrr": 0.297, "avg_tokens": 282},
+      "expand-nc": {"hit@5": 0.46, "hit@10": 0.54, "mrr": 0.297, "avg_tokens": 652},
+      "expand": {"hit@5": 0.46, "hit@10": 0.54, "mrr": 0.297, "avg_tokens": 652}}}
+  ],
+  "methodology_notes": "Queries = subjects of fix-like commits (1-5 code files, still present at HEAD); ground truth = files touched. Co-change mining excludes evaluated commit SHAs (leakage control). hit@k = fraction of tasks with >=1 ground-truth file in top k; MRR over first ground-truth hit; avg_tokens = retrieval payload cost."
+}

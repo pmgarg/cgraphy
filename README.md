@@ -35,10 +35,22 @@ pip install cgraphy        # or: uv tool install cgraphy
 
 ```bash
 cd your-repo
-cgraphy index . --git-history
+cgraphy init          # one command: MCP config + agent steering + index
 ```
 
-Then register the MCP server with your assistant:
+`cgraphy init` does three things:
+
+1. Writes a project-scoped `.mcp.json` — picked up automatically by **Claude
+   Code** in all its forms: CLI, VSCode extension, and the desktop app.
+2. Appends a steering block to `CLAUDE.md` and `AGENTS.md` telling agents to
+   consult the graph (`cgraphy_overview` → `cgraphy_search` →
+   `cgraphy_context`) *before* reading files — this is what makes the graph
+   actually replace bulk file reading. (Agents can't be forced, only steered:
+   instruction files + persuasive tool descriptions + the tools being
+   genuinely faster is the mechanism, and it works.)
+3. Builds the index with git co-change history.
+
+Or register the MCP server manually with your assistant:
 
 **Claude Code**
 
@@ -106,6 +118,18 @@ python scripts/benchmark.py /path/to/repo "your question"
 
 Prints the tokens an agent spends orienting via cgraphy (overview + search +
 context) versus reading every code file, and the reduction factor.
+
+## Localization benchmark (research harness)
+
+```bash
+python scripts/eval_localization.py /path/to/repo 50
+```
+
+Mines fix-like commits from the repo's history (subject = query, touched
+files = ground truth, co-change mining excludes evaluated commits), then
+scores an ablation ladder — FTS-only, +PageRank, +graph expansion, ±co-change
+edges — on hit@5/hit@10/MRR and token cost. No LLM calls, no human grading,
+fully reproducible. Results and a paper draft live in [paper/](paper/).
 
 ## How it works
 
