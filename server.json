@@ -1,0 +1,33 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.schema.json",
+  "name": "io.github.pmgarg/cgraphy",
+  "description": "Code knowledge graph over MCP: token-budgeted context, blast-radius impact analysis, diff review, and hybrid semantic search for AI coding agents. Any language via tree-sitter; zero infrastructure (one SQLite file).",
+  "repository": {
+    "url": "https://github.com/pmgarg/cgraphy",
+    "source": "github"
+  },
+  "version_detail": {
+    "version": "0.1.0"
+  },
+  "packages": [
+    {
+      "registry_name": "pypi",
+      "name": "cgraphy",
+      "version": "0.1.0",
+      "runtime_hint": "uvx",
+      "runtime_arguments": [
+        {
+          "type": "positional",
+          "value": "serve",
+          "description": "run the MCP server over stdio"
+        },
+        {
+          "type": "positional",
+          "value": "{repo_path}",
+          "description": "path to the repository to serve",
+          "is_required": true
+        }
+      ]
+    }
+  ]
+}
