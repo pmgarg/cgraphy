@@ -17,6 +17,8 @@ def build_parser() -> argparse.ArgumentParser:
     view = sub.add_parser("view", help="serve the local graph viewer")
     view.add_argument("path", nargs="?", default=".")
     view.add_argument("--port", type=int, default=8787)
+    ini = sub.add_parser("init", help="wire cgraphy into AI assistants for this repo")
+    ini.add_argument("path", nargs="?", default=".")
     return p
 
 
@@ -46,6 +48,13 @@ def main(argv=None) -> int:
     if args.command == "view":
         from cgraphy.viewer import serve_viewer
         serve_viewer(args.path, port=args.port)
+        return 0
+    if args.command == "init":
+        from cgraphy.indexer import index_repo
+        from cgraphy.init_cmd import init_project
+        print(init_project(args.path))
+        stats = index_repo(args.path, git_history=True)
+        print(f"indexed {stats['files_indexed']} files, {stats['nodes']} nodes")
         return 0
     return 2
 
