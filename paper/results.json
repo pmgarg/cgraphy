@@ -8,21 +8,60 @@
     "reduction_factor": 10.1
   },
   "localization_benchmark": [
-    {"repo": "click", "tasks": 50, "results": {
+    {"repo": "click", "language": "python", "tasks": 50, "results": {
       "fts": {"hit@5": 0.76, "hit@10": 0.76, "mrr": 0.589, "avg_tokens": 380},
       "rank": {"hit@5": 0.76, "hit@10": 0.76, "mrr": 0.598, "avg_tokens": 380},
       "expand-nc": {"hit@5": 0.76, "hit@10": 0.78, "mrr": 0.6, "avg_tokens": 1239},
       "expand": {"hit@5": 0.8, "hit@10": 0.82, "mrr": 0.609, "avg_tokens": 1239}}},
-    {"repo": "requests", "tasks": 50, "results": {
+    {"repo": "requests", "language": "python", "tasks": 50, "results": {
       "fts": {"hit@5": 0.7, "hit@10": 0.74, "mrr": 0.476, "avg_tokens": 371},
       "rank": {"hit@5": 0.7, "hit@10": 0.74, "mrr": 0.476, "avg_tokens": 371},
       "expand-nc": {"hit@5": 0.7, "hit@10": 0.76, "mrr": 0.478, "avg_tokens": 1186},
       "expand": {"hit@5": 0.7, "hit@10": 0.76, "mrr": 0.478, "avg_tokens": 1186}}},
-    {"repo": "flask", "tasks": 50, "results": {
+    {"repo": "flask", "language": "python", "tasks": 50, "results": {
       "fts": {"hit@5": 0.46, "hit@10": 0.54, "mrr": 0.288, "avg_tokens": 282},
       "rank": {"hit@5": 0.46, "hit@10": 0.54, "mrr": 0.297, "avg_tokens": 282},
       "expand-nc": {"hit@5": 0.46, "hit@10": 0.54, "mrr": 0.297, "avg_tokens": 652},
-      "expand": {"hit@5": 0.46, "hit@10": 0.54, "mrr": 0.297, "avg_tokens": 652}}}
+      "expand": {"hit@5": 0.46, "hit@10": 0.54, "mrr": 0.297, "avg_tokens": 652}}},
+    {"repo": "fmt", "language": "cpp", "tasks": 50, "results": {
+      "fts": {"hit@5": 0.32, "hit@10": 0.44, "mrr": 0.191, "avg_tokens": 264},
+      "rank": {"hit@5": 0.36, "hit@10": 0.46, "mrr": 0.2, "avg_tokens": 264},
+      "expand-nc": {"hit@5": 0.48, "hit@10": 0.6, "mrr": 0.251, "avg_tokens": 951},
+      "expand": {"hit@5": 0.48, "hit@10": 0.6, "mrr": 0.251, "avg_tokens": 951}}},
+    {"repo": "gin", "language": "go", "tasks": 50, "results": {
+      "fts": {"hit@5": 0.7, "hit@10": 0.74, "mrr": 0.588, "avg_tokens": 248},
+      "rank": {"hit@5": 0.78, "hit@10": 0.84, "mrr": 0.622, "avg_tokens": 248},
+      "expand-nc": {"hit@5": 0.78, "hit@10": 0.84, "mrr": 0.622, "avg_tokens": 1053},
+      "expand": {"hit@5": 0.78, "hit@10": 0.84, "mrr": 0.622, "avg_tokens": 1053}}},
+    {"repo": "ripgrep", "language": "rust", "tasks": 50, "results": {
+      "fts": {"hit@5": 0.66, "hit@10": 0.72, "mrr": 0.476, "avg_tokens": 358},
+      "rank": {"hit@5": 0.66, "hit@10": 0.72, "mrr": 0.445, "avg_tokens": 358},
+      "expand-nc": {"hit@5": 0.66, "hit@10": 0.74, "mrr": 0.447, "avg_tokens": 1236},
+      "expand": {"hit@5": 0.66, "hit@10": 0.74, "mrr": 0.447, "avg_tokens": 1236}}},
+    {"repo": "express", "language": "javascript", "tasks": 50, "results": {
+      "fts": {"hit@5": 0.42, "hit@10": 0.42, "mrr": 0.332, "avg_tokens": 148},
+      "rank": {"hit@5": 0.46, "hit@10": 0.48, "mrr": 0.327, "avg_tokens": 148},
+      "expand-nc": {"hit@5": 0.46, "hit@10": 0.48, "mrr": 0.328, "avg_tokens": 603},
+      "expand": {"hit@5": 0.5, "hit@10": 0.52, "mrr": 0.342, "avg_tokens": 603}}},
+    {"repo": "junit4", "language": "java", "tasks": 50, "results": {
+      "fts": {"hit@5": 0.48, "hit@10": 0.52, "mrr": 0.41, "avg_tokens": 484},
+      "rank": {"hit@5": 0.46, "hit@10": 0.5, "mrr": 0.42, "avg_tokens": 484},
+      "expand-nc": {"hit@5": 0.46, "hit@10": 0.52, "mrr": 0.424, "avg_tokens": 1070},
+      "expand": {"hit@5": 0.46, "hit@10": 0.52, "mrr": 0.424, "avg_tokens": 1070}}},
+    {"repo": "libuv", "language": "c", "tasks": 50, "results": {
+      "fts": {"hit@5": 0.52, "hit@10": 0.54, "mrr": 0.46, "avg_tokens": 307},
+      "rank": {"hit@5": 0.5, "hit@10": 0.62, "mrr": 0.448, "avg_tokens": 307},
+      "expand-nc": {"hit@5": 0.5, "hit@10": 0.62, "mrr": 0.45, "avg_tokens": 1205},
+      "expand": {"hit@5": 0.5, "hit@10": 0.62, "mrr": 0.451, "avg_tokens": 1205}}}
   ],
-  "methodology_notes": "Queries = subjects of fix-like commits (1-5 code files, still present at HEAD); ground truth = files touched. Co-change mining excludes evaluated commit SHAs (leakage control). hit@k = fraction of tasks with >=1 ground-truth file in top k; MRR over first ground-truth hit; avg_tokens = retrieval payload cost."
+  "swebench_localization": "pending — filled by scripts/eval_swebench.py run",
+  "local_projects_token_economy": [
+    {"project": "EAG_V3 (agentic LLM coursework, python)", "cgraphy_tokens": 2983,
+     "read_all_code_tokens": 1253150, "reduction_factor": 420.1},
+    {"project": "OMNET_AGENT (network simulation, c++)", "cgraphy_tokens": 4431,
+     "read_all_code_tokens": 593594, "reduction_factor": 134.0},
+    {"project": "logging_anomaly (ML pipeline, python)", "cgraphy_tokens": 2623,
+     "read_all_code_tokens": 985656, "reduction_factor": 375.8}
+  ],
+  "methodology_notes": "Localization: queries = subjects of fix-like commits (1-5 code files, still present at HEAD); ground truth = files touched; co-change mining excludes evaluated commit SHAs. SWE-bench: queries = real issue texts at base_commit checkout; ground truth = gold-patch files; co-change mined from pre-fix history only. hit@k = fraction of tasks with >=1 ground-truth file in top k; MRR over first ground-truth hit; avg_tokens = retrieval payload cost at ~4 chars/token."
 }
