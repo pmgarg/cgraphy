@@ -1,0 +1,76 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>cgraphy</title>
+<style>
+  body { margin:0; font:13px system-ui, sans-serif; display:flex; height:100vh; }
+  #cy { flex:1; }
+  #side { width:300px; border-left:1px solid #ddd; padding:12px; overflow:auto; }
+  #search { width:100%; padding:6px; margin-bottom:8px; box-sizing:border-box; }
+  .kind { color:#888; font-size:11px; text-transform:uppercase; }
+  h3 { margin:6px 0; word-break:break-all; }
+  @media (prefers-color-scheme: dark) {
+    body { background:#111; color:#eee; } #side { border-color:#333; }
+    #search { background:#222; color:#eee; border:1px solid #444; }
+  }
+</style>
+<div id="cy"></div>
+<div id="side">
+  <input id="search" placeholder="search symbols…">
+  <div id="detail">Click a node. Double-click to expand neighbors.</div>
+</div>
+<script src="/cytoscape.min.js"></script>
+<script>
+const COLORS = {file:"#8896c4", class:"#c48a5a", function:"#5aa66f",
+                method:"#5aa66f", module:"#999", variable:"#b06fb0"};
+// node fields originate from indexed source code — treat them as untrusted
+const esc = s => String(s ?? "").replace(/[&<>"']/g,
+  c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+fetch("/graph.json").then(r => r.json()).then(g => {
+  const cy = cytoscape({
+    container: document.getElementById("cy"),
+    elements: g,
+    layout: {name:"cose", animate:false, nodeOverlap:8},
+    style: [
+      {selector:"node", style:{
+        label:"data(label)", "font-size":"9px", width:12, height:12,
+        "background-color": e => COLORS[e.data("kind")] || "#999",
+      }},
+      {selector:"edge", style:{width:1, "line-color":"#ccc",
+        "curve-style":"haystack", opacity:0.6}},
+      {selector:"edge[kind='co_changes']", style:{"line-style":"dashed",
+        "line-color":"#d0a"}},
+      {selector:".dim", style:{opacity:0.08}},
+      {selector:".hi", style:{"background-color":"#e33", width:18, height:18}},
+    ],
+  });
+  // start with only the top-150 visible; dblclick reveals neighbors
+  const byRank = cy.nodes().sort((a,b) => b.data("rank") - a.data("rank"));
+  byRank.slice(150).style("display","none");
+  cy.on("tap","node", evt => {
+    const d = evt.target.data();
+    document.getElementById("detail").innerHTML =
+      `<div class="kind">${esc(d.kind)}</div><h3>${esc(d.label)}</h3>` +
+      `<div>${esc(d.file || "")}${d.line ? ":"+esc(d.line) : ""}</div>` +
+      (d.summary ? `<p>${esc(d.summary)}</p>` : "<p><i>no summary yet</i></p>") +
+      `<div class="kind">rank ${(+d.rank||0).toFixed(3)}</div>`;
+    cy.elements().addClass("dim");
+    evt.target.closedNeighborhood().removeClass("dim");
+    cy.nodes().removeClass("hi"); evt.target.addClass("hi");
+  });
+  cy.on("dbltap","node", evt => {
+    evt.target.neighborhood("node").style("display","element");
+    cy.layout({name:"cose", animate:false}).run();
+  });
+  cy.on("tap", evt => { if (evt.target === cy) cy.elements().removeClass("dim"); });
+  document.getElementById("search").addEventListener("input", e => {
+    const q = e.target.value.toLowerCase();
+    cy.elements().removeClass("dim");
+    if (!q) return;
+    cy.nodes().addClass("dim");
+    const hits = cy.nodes().filter(n =>
+      (n.data("label")||"").toLowerCase().includes(q) ||
+      (n.data("summary")||"").toLowerCase().includes(q));
+    hits.removeClass("dim").style("display","element");
+  });
+});
+</script>
