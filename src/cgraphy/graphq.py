@@ -110,6 +110,16 @@ def overview(db, token_budget=2000) -> str:
     parts.append("## Key symbols (by importance)")
     for row in db.top_nodes(15):
         parts.append(_line(row, "- "))
+    from cgraphy.communities import subsystems
+    subs = subsystems(db)
+    if subs:
+        parts.append("\n## Subsystems (files that work together)")
+        for _cid, members, size in subs:
+            lead = members[0]
+            names = ", ".join(m["file_path"] for m in members)
+            extra = f" (+{size - len(members)} more)" if size > len(members) else ""
+            desc = f" — {lead['summary']}" if lead["summary"] else ""
+            parts.append(f"- [{size} files] {names}{extra}{desc}")
     parts.append("\n## Files")
     groups = defaultdict(list)
     for f in files:
@@ -142,6 +152,14 @@ def context(db, ref, token_budget=2000) -> str:
     if node is None:
         return (f"No node found for '{ref}'. "
                 "Use cgraphy_search to find the right qualified name.")
+    db.log_usage(node["id"])
+    usage = db.usage_counts()
+
+    def boost(nid):
+        # usage-informed reweighting: nodes agents keep asking about surface
+        # earlier; capped so telemetry can never drown structure
+        return 1.0 + 0.1 * min(usage.get(nid, 0), 5)
+
     header = [_line(node), ""]
     if node["signature"]:
         header.insert(1, f"signature: {node['signature']}")
@@ -152,7 +170,7 @@ def context(db, ref, token_budget=2000) -> str:
     heap = []
     counter = 0
     for direction, kind, weight, nrow in db.neighbors(node["id"]):
-        prio = weight * (0.5 + (nrow["rank"] or 0.0))
+        prio = weight * (0.5 + (nrow["rank"] or 0.0)) * boost(nrow["id"])
         counter += 1
         heapq.heappush(heap, (-prio, counter, 1, direction, kind, nrow))
     while heap:
@@ -171,7 +189,8 @@ def context(db, ref, token_budget=2000) -> str:
             for d2, k2, w2, n2 in db.neighbors(row["id"]):
                 if n2["id"] not in seen:
                     counter += 1
-                    prio = w2 * (0.5 + (n2["rank"] or 0.0)) * decay
+                    prio = (w2 * (0.5 + (n2["rank"] or 0.0)) * decay
+                            * boost(n2["id"]))
                     heapq.heappush(heap, (-prio, counter, depth + 1, d2, k2, n2))
     if unresolved:
         tail = "unresolved: " + ", ".join(sorted(set(unresolved))[:10]) + "\n"

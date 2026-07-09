@@ -29,6 +29,22 @@ def ensure_gitignore(root: Path):
             gi.write_text(text.rstrip("\n") + "\n.cgraphy/\n")
 
 
+def _schema_summary(path, text):
+    """Deterministic data-lineage summary: make dataset schemas searchable."""
+    suffix = path.suffix.lower()
+    if suffix == ".csv":
+        header = text.split("\n", 1)[0][:400]
+        if "," in header:
+            return f"CSV dataset — columns: {header}"
+    elif suffix == ".sql":
+        import re
+        tables = re.findall(r"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?"
+                            r"[`\"']?(\w+)", text, re.I)
+        if tables:
+            return "SQL schema — defines tables: " + ", ".join(tables[:20])
+    return None
+
+
 def index_file(db, root, path, lang):
     rel = relpath(root, path)
     raw = path.read_bytes()
@@ -41,6 +57,10 @@ def index_file(db, root, path, lang):
     file_id = db.add_node("file", path.name, rel, language=lang, file_path=rel,
                           line_start=1, line_end=len(lines),
                           parse_error=1 if ex.parse_error else 0)
+    schema = _schema_summary(path, text)
+    if schema:
+        db.update_summary(file_id, schema,
+                          hashlib.sha256(raw).hexdigest())
     id_by_qname = {}
     for s in ex.syms:
         nid = db.add_node(s.kind, s.name, s.qualified_name, language=lang,
@@ -106,6 +126,8 @@ def index_repo(root, git_history: bool = False) -> dict:
         apply_pagerank(db)
     except ImportError:
         pass
+    from cgraphy.communities import apply_communities
+    apply_communities(db)
     stats["nodes"] = db.count_nodes()
     db.commit()
     db.close()

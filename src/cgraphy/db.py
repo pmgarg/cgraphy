@@ -16,7 +16,8 @@ CREATE TABLE IF NOT EXISTS nodes(
   summary TEXT DEFAULT '',
   summary_hash TEXT DEFAULT '',
   parse_error INTEGER DEFAULT 0,
-  rank REAL DEFAULT 0.0
+  rank REAL DEFAULT 0.0,
+  community INTEGER DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_nodes_qname ON nodes(qualified_name);
 CREATE INDEX IF NOT EXISTS idx_nodes_name ON nodes(name);
@@ -41,6 +42,10 @@ CREATE TABLE IF NOT EXISTS files(
   content_hash TEXT NOT NULL,
   last_indexed REAL NOT NULL
 );
+CREATE TABLE IF NOT EXISTS usage(
+  node_id INTEGER PRIMARY KEY,
+  cnt INTEGER DEFAULT 0
+);
 CREATE VIRTUAL TABLE IF NOT EXISTS node_fts USING fts5(
   name, qualified_name, summary
 );
@@ -58,6 +63,11 @@ class GraphDB:
         self.conn = sqlite3.connect(str(path))
         self.conn.row_factory = sqlite3.Row
         self.conn.executescript(SCHEMA)
+        try:  # migrate graphs built before the community column existed
+            self.conn.execute(
+                "ALTER TABLE nodes ADD COLUMN community INTEGER DEFAULT 0")
+        except sqlite3.OperationalError:
+            pass
 
     def close(self):
         self.conn.commit()
@@ -209,3 +219,14 @@ class GraphDB:
 
     def count_nodes(self):
         return self.conn.execute("SELECT COUNT(*) FROM nodes").fetchone()[0]
+
+    # --- usage telemetry (feeds retrieval reweighting) ---
+    def log_usage(self, node_id):
+        self.conn.execute(
+            "INSERT INTO usage(node_id,cnt) VALUES(?,1) "
+            "ON CONFLICT(node_id) DO UPDATE SET cnt=cnt+1", (node_id,))
+        self.conn.commit()
+
+    def usage_counts(self):
+        return {r[0]: r[1] for r in self.conn.execute(
+            "SELECT node_id, cnt FROM usage")}
