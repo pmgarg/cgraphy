@@ -43,12 +43,18 @@ def make_query(problem, max_words=250):
     return " ".join(text.split()[:max_words])
 
 
+def write_steering(repo):
+    """The as-deployed config: the CLAUDE.md block `cgraphy init` installs."""
+    from cgraphy.init_cmd import STEERING_BLOCK
+    (Path(repo) / "CLAUDE.md").write_text(STEERING_BLOCK.lstrip("\n"))
+
+
 def run_claude(cwd, prompt, arm, model, max_turns=30):
     allowed = "Read,Grep,Glob"
     cmd = ["claude", "-p", prompt, "--output-format", "json",
            "--model", model, "--max-turns", str(max_turns),
            "--disallowedTools", "Bash,Write,Edit,WebSearch,WebFetch,Task"]
-    if arm == "cgraphy":
+    if arm in ("cgraphy", "steered"):
         mcp = {"mcpServers": {"cgraphy": {
             "command": "uv",
             "args": ["run", "--project", PROJ, "--with", "model2vec",
@@ -131,11 +137,13 @@ def main():
             if not checkout(repo, inst["base_commit"]):
                 continue
             shutil.rmtree(repo / ".cgraphy", ignore_errors=True)
-            if arm == "cgraphy":  # pre-build graph so latency isn't measured
+            if arm in ("cgraphy", "steered"):  # pre-build graph
                 subprocess.run(
                     ["uv", "run", "--project", PROJ, "--with", "model2vec",
                      "cgraphy", "index", str(repo), "--git-history"],
                     capture_output=True, timeout=600)
+            if arm == "steered":
+                write_steering(repo)
             prompt = PROMPT.format(repo=name,
                                    issue=make_query(inst["problem_statement"]))
             res = run_claude(repo, prompt, arm, args.model)
@@ -151,6 +159,7 @@ def main():
                 "turns": res.get("num_turns"),
                 "cost_usd": res.get("total_cost_usd"),
                 "duration_ms": res.get("duration_ms"),
+                "subtype": res.get("subtype"),
                 "error": res.get("error"),
             }
             with open(out, "a") as f:

@@ -17,7 +17,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from eval_agent import make_query, tokens_of
+from eval_agent import make_query, tokens_of, write_steering
 from eval_swebench import checkout
 
 PROJ = str(Path(__file__).resolve().parent.parent)
@@ -111,11 +111,12 @@ def main():
             if not checkout(repo, inst["base_commit"]):
                 continue
             shutil.rmtree(repo / ".cgraphy", ignore_errors=True)
-            if arm == "cgraphy":
+            if arm == "cgraphy":  # as-deployed config: graph + steering
                 subprocess.run(
                     ["uv", "run", "--project", PROJ, "--with", "model2vec",
                      "cgraphy", "index", str(repo), "--git-history"],
                     capture_output=True, timeout=600)
+                write_steering(repo)
             prompt = PROMPT.format(repo=name,
                                    issue=make_query(inst["problem_statement"],
                                                     max_words=400))
@@ -133,6 +134,8 @@ def main():
                     "tokens": tokens_of(res.get("usage", {})),
                     "turns": res.get("num_turns"),
                     "cost_usd": res.get("total_cost_usd"),
+                    "subtype": res.get("subtype"),
+                    "result_head": str(res.get("result"))[:200],
                     "error": res.get("error")}) + "\n")
             print(f"{inst['instance_id']} [{arm}] patch={len(patch)}B "
                   f"turns={res.get('num_turns')} "
