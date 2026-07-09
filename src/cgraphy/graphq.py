@@ -1,9 +1,100 @@
 import heapq
 from collections import defaultdict
+from pathlib import Path
 
 
 def estimate_tokens(text: str) -> int:
     return len(text) // 4
+
+
+def _is_test_path(path: str) -> bool:
+    p = (path or "").lower()
+    return "test" in Path(p).name or "/tests/" in f"/{p}"
+
+
+def read_symbol(db, root, ref, token_budget=1500, context_lines=2) -> str:
+    """Return just the symbol's source (with location), not the whole file."""
+    node = db.node_by_ref(ref)
+    if node is None:
+        return (f"No node found for '{ref}'. "
+                "Use cgraphy_search to find the right qualified name.")
+    path = Path(root) / node["file_path"]
+    try:
+        lines = path.read_text(errors="replace").split("\n")
+    except OSError:
+        return f"{node['qualified_name']}: source file unavailable."
+    start = max((node["line_start"] or 1) - 1 - context_lines, 0)
+    end = min(node["line_end"] or len(lines), len(lines))
+    header = (f"{node['kind']} {node['qualified_name']} — "
+              f"{node['file_path']}:{node['line_start']}\n")
+    budget_chars = token_budget * 4 - len(header) - 40
+    body = []
+    used = 0
+    for i in range(start, min(end + context_lines, len(lines))):
+        ln = f"{i + 1:>5}| {lines[i]}\n"
+        if used + len(ln) > budget_chars:
+            body.append("…(budget reached)\n")
+            break
+        body.append(ln)
+        used += len(ln)
+    return header + "".join(body)
+
+
+def impact(db, ref, token_budget=1500, max_depth=3) -> str:
+    """Blast radius: what depends on this symbol, and which tests cover it."""
+    node = db.node_by_ref(ref)
+    if node is None:
+        return (f"No node found for '{ref}'. "
+                "Use cgraphy_search to find the right qualified name.")
+    budget = token_budget * 4
+    # reverse BFS over incoming dependency edges
+    dependents, tests = [], []
+    seen = {node["id"]}
+    frontier = [(node["id"], 0)]
+    while frontier:
+        nid, depth = frontier.pop(0)
+        if depth >= max_depth:
+            continue
+        for direction, kind, _w, nrow in db.neighbors(nid):
+            if direction != "in" or kind not in ("calls", "imports", "inherits"):
+                continue
+            if nrow["id"] in seen:
+                continue
+            seen.add(nrow["id"])
+            entry = (depth + 1, nrow)
+            (tests if _is_test_path(nrow["file_path"]) else dependents).append(entry)
+            frontier.append((nrow["id"], depth + 1))
+    dependents.sort(key=lambda e: (e[0], -(e[1]["rank"] or 0)))
+    tests.sort(key=lambda e: (e[0], -(e[1]["rank"] or 0)))
+    # co-changed files of the symbol's file
+    cochanged = []
+    frow = db.node_by_ref(node["file_path"]) if node["file_path"] else None
+    if frow is not None:
+        for _d, kind, w, nrow in db.neighbors(frow["id"]):
+            if kind == "co_changes":
+                cochanged.append((w, nrow["file_path"]))
+        cochanged.sort(reverse=True)
+
+    parts = [f"Impact of changing {node['kind']} {node['qualified_name']} "
+             f"({node['file_path']}:{node['line_start']}):\n"]
+    if dependents:
+        parts.append(f"Dependents ({len(dependents)}, by distance):")
+        parts += [f"  d{d} {_line(r)}" for d, r in dependents[:20]]
+    else:
+        parts.append("No known dependents (leaf symbol or unresolved callers).")
+    if tests:
+        parts.append(f"Tests likely affected ({len(tests)}):")
+        parts += [f"  d{d} {_line(r)}" for d, r in tests[:10]]
+    if cochanged:
+        parts.append("Files that historically co-change with this file:")
+        parts += [f"  {w:.2f} {p}" for w, p in cochanged[:8]]
+    text = ""
+    for p in parts:
+        if len(text) + len(p) + 1 > budget:
+            text += "…(budget reached)"
+            break
+        text += p + "\n"
+    return text
 
 
 def _line(row, prefix=""):
