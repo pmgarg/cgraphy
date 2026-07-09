@@ -30,6 +30,19 @@ SKIP_DIRS = {".git", ".hg", ".svn", ".cgraphy", "node_modules", ".venv", "venv",
              ".idea", ".vscode", ".tox", "target", ".next", ".cache"}
 
 
+MINIFY_SNIFF_EXTS = {".js", ".jsx", ".mjs", ".css", ".html"}
+MAX_LINE_BYTES = 2000
+
+
+def _looks_minified(path: Path) -> bool:
+    """Generated/minified web assets have kilobyte-long lines; parsing them
+    is slow and their symbols are noise. Sniff the head instead of trusting
+    filenames (saved webpages ship minified JS without a .min suffix)."""
+    with open(path, "rb") as f:
+        head = f.read(8192)
+    return any(len(line) > MAX_LINE_BYTES for line in head.split(b"\n"))
+
+
 def relpath(root, path) -> str:
     return Path(path).relative_to(root).as_posix()
 
@@ -69,6 +82,8 @@ def iter_files(root):
                 continue
             try:
                 if p.stat().st_size > MAX_FILE_BYTES:
+                    continue
+                if ext in MINIFY_SNIFF_EXTS and _looks_minified(p):
                     continue
             except OSError:
                 continue

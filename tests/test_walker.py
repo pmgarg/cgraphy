@@ -27,6 +27,7 @@ def test_respects_gitignore_and_cgraphyignore(tmp_path):
 def test_skips_minified_and_lock_files(tmp_path):
     make(tmp_path, "vendor.min.js"); make(tmp_path, "styles.min.css")
     make(tmp_path, "uv.lock"); make(tmp_path, "ok.js")
+    make(tmp_path, "sneaky.js", "var a=1;" * 500 + "\n")  # minified, no .min
     got = {relpath(tmp_path, p) for p, _ in iter_files(tmp_path)}
     assert got == {"ok.js"}
 
