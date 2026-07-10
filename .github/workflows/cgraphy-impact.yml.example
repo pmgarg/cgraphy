@@ -1,0 +1,45 @@
+# cgraphy blast-radius PR comments.
+# Copy into your repo as .github/workflows/cgraphy-impact.yml — every pull
+# request gets a comment mapping the diff to touched symbols, their users,
+# and covering tests. Rename or remove the .example suffix to activate.
+name: cgraphy impact
+on:
+  pull_request:
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  impact:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v4
+      - name: Cache graph
+        uses: actions/cache@v4
+        with:
+          path: .cgraphy
+          key: cgraphy-${{ github.event.repository.default_branch }}
+      - name: Analyze diff
+        run: |
+          git diff origin/${{ github.base_ref }}... > /tmp/pr.diff || true
+          uvx cgraphy index . --git-history
+          # diff against the PR base so the whole PR is analyzed
+          git reset --soft origin/${{ github.base_ref }}
+          uvx cgraphy diff . | tee /tmp/impact.txt
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = '## cgraphy blast radius\n```\n' +
+              fs.readFileSync('/tmp/impact.txt', 'utf8').slice(0, 60000) +
+              '\n```';
+            github.rest.issues.createComment({
+              ...context.repo,
+              issue_number: context.issue.number,
+              body,
+            });

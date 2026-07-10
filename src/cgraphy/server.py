@@ -1,3 +1,5 @@
+import os
+import threading
 import time
 from pathlib import Path
 
@@ -7,6 +9,23 @@ from cgraphy.indexer import db_path, index_repo
 
 _last_check = 0.0
 STALE_SECONDS = 30
+WATCH_SECONDS = int(os.environ.get("CGRAPHY_WATCH_SECONDS", "20"))
+
+
+def _watcher(root: Path):
+    """Keep the graph fresh in the background: serving IS watching.
+
+    index_repo is mtime-gated and incremental, so an idle cycle costs one
+    directory walk and nothing else. Disable with CGRAPHY_WATCH_SECONDS=0.
+    """
+    global _last_check
+    while True:
+        time.sleep(WATCH_SECONDS)
+        try:
+            index_repo(root)
+            _last_check = time.time()
+        except Exception:
+            pass
 
 
 def _fresh_db(root: Path, auto_create=False):
@@ -164,4 +183,7 @@ def create_server(root):
 
 
 def run_server(root):
+    root = Path(root).resolve()
+    if WATCH_SECONDS > 0:
+        threading.Thread(target=_watcher, args=(root,), daemon=True).start()
     create_server(root).run()

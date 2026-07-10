@@ -13,31 +13,25 @@ STEERING_MARK = "<!-- cgraphy-steering -->"
 
 STEERING_BLOCK = f"""
 {STEERING_MARK}
-## Code navigation: use the cgraphy knowledge graph
+## cgraphy knowledge graph (MCP server `cgraphy`)
 
-This repo is indexed by cgraphy (MCP server `cgraphy`). Its tools appear
-under full names like `mcp__cgraphy__cgraphy_search` — use those exact
-names when loading or calling them.
+This repo has a self-maintaining code graph. Tool names appear as
+`mcp__cgraphy__<tool>` (e.g. `mcp__cgraphy__cgraphy_search`).
 
-BEFORE reading files, in this order:
+These are REPLACEMENTS, not extra steps — substitute, don't add:
 
-1. `cgraphy_overview` — repo map, subsystems, key symbols (once per task).
-2. `cgraphy_search <query>` — locate symbols/files by name or meaning.
-3. `cgraphy_context <symbol>` — callers/callees/imports/co-changed files.
-4. `cgraphy_read <symbol>` — read just that symbol's source, not the file.
+| Instead of | Use |
+| --- | --- |
+| grep for a symbol/function/class name | `cgraphy_search <name or meaning>` |
+| reading a whole file to see one function | `cgraphy_read <symbol>` |
+| tracing callers/usages by hand | `cgraphy_context <symbol>` |
+| guessing what a change breaks | `cgraphy_impact <symbol>` |
+| re-reading your own diff before commit | `cgraphy_diff_context` |
 
-When EDITING code:
-- BEFORE changing a shared symbol: `cgraphy_impact <symbol>` (dependents +
-  affected tests).
-- BEFORE committing or when resuming work: `cgraphy_diff_context`.
-
-Rules:
-- Prefer cgraphy_search/cgraphy_read over Grep/Read for finding and
-  inspecting symbols; use Grep only for literal strings the graph cannot
-  index. Never repeat the same lookup with both.
-- Do NOT bulk-read directories or many whole files.
-- NEVER call cgraphy_enrich or cgraphy_store_summaries during a normal
-  task — only when the user explicitly asks to enrich the graph.
+Keep your normal workflow otherwise. Grep is still right for literal
+strings, error messages, and non-symbol text. Never run the same lookup
+through both paths. NEVER call cgraphy_enrich/cgraphy_store_summaries
+unless the user explicitly asks to enrich the graph.
 """
 
 MCP_ENTRY = {"command": "uvx", "args": ["cgraphy", "serve", "."]}
@@ -83,9 +77,38 @@ def _write_mcp_json(root: Path):
     p.write_text(json.dumps(data, indent=2) + "\n")
 
 
+HOOK_MARK = "# cgraphy-diff-context"
+HOOK_BODY = f"""{HOOK_MARK}
+# Show blast radius of this commit (never blocks the commit).
+uvx cgraphy diff . 2>/dev/null || true
+"""
+
+
+def _install_hook(root: Path) -> bool:
+    hooks = root / ".git" / "hooks"
+    if not hooks.is_dir():
+        return False
+    hook = hooks / "pre-commit"
+    if hook.is_file():
+        text = hook.read_text(errors="replace")
+        if HOOK_MARK in text:
+            return True
+        hook.write_text(text.rstrip("\n") + "\n\n" + HOOK_BODY)
+    else:
+        hook.write_text("#!/bin/sh\n" + HOOK_BODY)
+    hook.chmod(0o755)
+    return True
+
+
 def init_project(root) -> str:
     root = Path(root).resolve()
     _write_mcp_json(root)
     for name in ("CLAUDE.md", "AGENTS.md"):
         _append_steering(root / name)
-    return OTHER_SURFACES.format(root=root)
+    hooked = _install_hook(root)
+    out = OTHER_SURFACES.format(root=root)
+    if hooked:
+        out += ("\npre-commit hook installed: every commit prints its blast "
+                "radius (remove the cgraphy block from .git/hooks/pre-commit "
+                "to opt out).\n")
+    return out

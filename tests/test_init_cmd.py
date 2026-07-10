@@ -9,7 +9,7 @@ def test_init_creates_mcp_json_and_steering_files(tmp_path):
     mcp = json.loads((tmp_path / ".mcp.json").read_text())
     assert mcp["mcpServers"]["cgraphy"]["command"] == "uvx"
     assert "cgraphy" in (tmp_path / "CLAUDE.md").read_text()
-    assert "cgraphy_overview" in (tmp_path / "AGENTS.md").read_text()
+    assert "cgraphy_search" in (tmp_path / "AGENTS.md").read_text()
     assert "Codex" in out  # printed guidance mentions other surfaces
 
 
@@ -18,7 +18,7 @@ def test_init_appends_without_duplicating(tmp_path):
     init_project(tmp_path)
     init_project(tmp_path)  # second run must not duplicate
     text = (tmp_path / "CLAUDE.md").read_text()
-    assert text.count("cgraphy_overview") == 1
+    assert text.count("cgraphy_search") == 1
     assert text.startswith("# My project")
 
 
