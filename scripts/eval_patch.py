@@ -121,6 +121,17 @@ def main():
                                    issue=make_query(inst["problem_statement"],
                                                     max_words=400))
             res = run_claude(repo, prompt, arm, args.model)
+            if not res.get("error") and tokens_of(res.get("usage", {})) == 0:
+                # usage limit: record nothing so resume retries; stop after 3
+                strikes = getattr(main, "_strikes", 0) + 1
+                main._strikes = strikes
+                print(f"{inst['instance_id']} [{arm}] usage-limit hit "
+                      f"({strikes}/3) — not recorded", flush=True)
+                if strikes >= 3:
+                    print("usage limit exhausted — stopping sweep", flush=True)
+                    sys.exit(3)
+                continue
+            main._strikes = 0
             patch = harvest_patch(repo)
             with open(pred_path, "a") as f:
                 f.write(json.dumps({

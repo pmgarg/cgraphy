@@ -147,6 +147,20 @@ def main():
             prompt = PROMPT.format(repo=name,
                                    issue=make_query(inst["problem_statement"]))
             res = run_claude(repo, prompt, arm, args.model)
+            if not res.get("error") and tokens_of(res.get("usage", {})) == 0:
+                res["error"] = "usage_limit: " + str(res.get("result"))[:80]
+                limit_strikes = getattr(main, "_strikes", 0) + 1
+                main._strikes = limit_strikes
+                if limit_strikes >= 3:
+                    print("usage limit exhausted — stopping sweep (resume "
+                          "retries these records)", flush=True)
+                    rec = {"instance_id": inst["instance_id"], "arm": arm,
+                           "error": res["error"]}
+                    with open(out, "a") as f:
+                        f.write(json.dumps(rec) + "\n")
+                    sys.exit(3)
+            else:
+                main._strikes = 0
             files = extract_files(res.get("result", ""))
             first = next((i for i, f in enumerate(files) if f in gold), None)
             rec = {
