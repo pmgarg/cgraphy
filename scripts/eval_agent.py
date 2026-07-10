@@ -54,7 +54,7 @@ def run_claude(cwd, prompt, arm, model, max_turns=30):
     cmd = ["claude", "-p", prompt, "--output-format", "json",
            "--model", model, "--max-turns", str(max_turns),
            "--disallowedTools", "Bash,Write,Edit,WebSearch,WebFetch,Task"]
-    if arm in ("cgraphy", "steered"):
+    if arm in ("cgraphy", "steered", "enriched"):
         mcp = {"mcpServers": {"cgraphy": {
             "command": "uv",
             "args": ["run", "--project", PROJ, "--with", "model2vec",
@@ -136,13 +136,20 @@ def main():
                 continue
             if not checkout(repo, inst["base_commit"]):
                 continue
-            shutil.rmtree(repo / ".cgraphy", ignore_errors=True)
-            if arm in ("cgraphy", "steered"):  # pre-build graph
+            if arm != "enriched":  # enriched reuses graph: summaries persist
+                shutil.rmtree(repo / ".cgraphy", ignore_errors=True)
+            if arm in ("cgraphy", "steered", "enriched"):  # pre-build graph
                 subprocess.run(
                     ["uv", "run", "--project", PROJ, "--with", "model2vec",
                      "cgraphy", "index", str(repo), "--git-history"],
                     capture_output=True, timeout=600)
-            if arm == "steered":
+            if arm == "enriched":
+                sys.path.insert(0, PROJ + "/src")
+                from cgraphy.enrich_cmd import enrich_repo
+                n = enrich_repo(repo, max_nodes=300)
+                if n:
+                    print(f"  enriched {n} symbols", flush=True)
+            if arm in ("steered", "enriched"):
                 write_steering(repo)
             prompt = PROMPT.format(repo=name,
                                    issue=make_query(inst["problem_statement"]))
