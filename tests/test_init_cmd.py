@@ -18,7 +18,7 @@ def test_init_appends_without_duplicating(tmp_path):
     init_project(tmp_path)
     init_project(tmp_path)  # second run must not duplicate
     text = (tmp_path / "CLAUDE.md").read_text()
-    assert text.count("cgraphy_search") == 1
+    assert text.count("<!-- cgraphy-steering -->") == 1
     assert text.startswith("# My project")
 
 
