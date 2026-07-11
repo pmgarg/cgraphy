@@ -114,25 +114,29 @@ def index_repo(root, git_history: bool = False) -> dict:
         index_file(db, root, path, lang)
         db.set_file(rel, h, time.time())
         stats["files_indexed"] += 1
+    deleted = 0
     for gone in db.indexed_paths() - seen:
         db.clear_file(gone)
         db.delete_file(gone)
-    resolve_refs(db)
-    if git_history:
-        from cgraphy.gitmine import mine_cochanges
-        mine_cochanges(db, root)
-    try:
-        from cgraphy.pagerank import apply_pagerank
-        apply_pagerank(db)
-    except ImportError:
-        pass
-    from cgraphy.communities import apply_communities
-    apply_communities(db)
-    try:
-        from cgraphy import semantic
-        semantic.embed_missing(db)
-    except Exception:
-        pass
+        deleted += 1
+    changed = stats["files_indexed"] > 0 or deleted > 0
+    if changed:  # post-passes are pointless (and costly at scale) otherwise
+        resolve_refs(db)
+        if git_history:
+            from cgraphy.gitmine import mine_cochanges
+            mine_cochanges(db, root)
+        try:
+            from cgraphy.pagerank import apply_pagerank
+            apply_pagerank(db)
+        except ImportError:
+            pass
+        from cgraphy.communities import apply_communities
+        apply_communities(db)
+        try:
+            from cgraphy import semantic
+            semantic.embed_missing(db)
+        except Exception:
+            pass
     stats["nodes"] = db.count_nodes()
     db.commit()
     db.close()
