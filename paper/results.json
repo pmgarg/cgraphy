@@ -93,6 +93,16 @@
     "per_repo_hit10_expand": {"flask": 1.0, "requests": 0.83, "sphinx": 0.69,
       "seaborn": 0.5, "pytest": 0.29, "xarray": 0.2, "pylint": 0.17}
   },
+  "scale_benchmark": {
+    "repo": "kubernetes/kubernetes (depth-1, 2026-07)",
+    "files": 26190, "nodes": 219431, "db_mb": 226,
+    "full_index_s": 48.9,
+    "incremental_one_edit_s": 10.4,
+    "idle_watcher_cycle_s": 1.6,
+    "query_ms": {"overview": 152, "search": 7, "context": 1},
+    "before_fix": {"full_index_s": 9441, "incremental_s": 8941,
+      "cause": "quadratic suffix matching in reference resolution + post-passes running on no-change cycles"}
+  },
   "local_projects_token_economy": [
     {"project": "EAG_V3 (agentic LLM coursework, python)", "cgraphy_tokens": 2983,
      "read_all_code_tokens": 1253150, "reduction_factor": 420.1},
