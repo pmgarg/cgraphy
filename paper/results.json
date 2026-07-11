@@ -93,6 +93,22 @@
     "per_repo_hit10_expand": {"flask": 1.0, "requests": 0.83, "sphinx": 0.69,
       "seaborn": 0.5, "pytest": 0.29, "xarray": 0.2, "pylint": 0.17}
   },
+  "swebench_resolution": {
+    "setup": "57 SWE-bench Lite instances, haiku-4.5 agents, max 40 turns, Edit tools, no Bash; official swebench harness v4.1.0, arm64 local builds; canonical = final run per arm",
+    "baseline": {"resolved": 8, "submitted": 57, "completed_eval": 33,
+      "empty_patches": 7, "arm64_build_errors": 17},
+    "cgraphy": {"resolved": 14, "submitted": 57, "completed_eval": 38,
+      "empty_patches": 9, "arm64_build_errors": 10},
+    "common_completed_subset": {"n": 27, "baseline_resolved": 6,
+      "cgraphy_resolved": 10},
+    "cgraphy_only_resolved": ["psf__requests-1963", "psf__requests-2317",
+      "psf__requests-2674", "psf__requests-863", "pytest-dev__pytest-5227",
+      "pytest-dev__pytest-5692", "pytest-dev__pytest-7373",
+      "pytest-dev__pytest-7432"],
+    "baseline_only_resolved": ["pytest-dev__pytest-9359",
+      "sphinx-doc__sphinx-8713"],
+    "notes": "patch generation is stochastic across retries; arm64 build errors differ per instance and are excluded from the common subset"
+  },
   "scale_benchmark": {
     "repo": "kubernetes/kubernetes (depth-1, 2026-07)",
     "files": 26190, "nodes": 219431, "db_mb": 226,
