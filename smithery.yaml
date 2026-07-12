@@ -1,15 +1,15 @@
 startCommand:
   type: stdio
-  configSchema:
-    type: object
-    required:
-      - repoPath
-    properties:
-      repoPath:
-        type: string
-        description: path to the repository to serve
-  commandFunction: |-
-    (config) => ({
-      command: 'uvx',
-      args: ['cgraphy', 'serve', config.repoPath]
-    })
+configSchema:
+  type: object
+  required:
+    - repoPath
+  properties:
+    repoPath:
+      type: string
+      description: path to the repository to serve
+commandFunction: |-
+  (config) => ({
+    command: 'uvx',
+    args: ['cgraphy', 'serve', config.repoPath]
+  })
