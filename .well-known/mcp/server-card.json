@@ -1,0 +1,247 @@
+{
+  "tools": [
+    {
+      "name": "cgraphy_overview",
+      "description": "ALWAYS call this FIRST before exploring files in this repo. Returns a compact map of the codebase: key symbols ranked by importance and all files with summaries. Replaces reading many files to orient yourself.",
+      "inputSchema": {
+        "properties": {},
+        "title": "cgraphy_overviewArguments",
+        "type": "object"
+      },
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "cgraphy_overviewOutput",
+        "type": "object"
+      }
+    },
+    {
+      "name": "cgraphy_search",
+      "description": "Search the code knowledge graph by meaning or name (functions, classes, files). Use BEFORE grep/file reads \u2014 results include semantic summaries and exact file:line locations.",
+      "inputSchema": {
+        "properties": {
+          "query": {
+            "title": "Query",
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "cgraphy_searchArguments",
+        "type": "object"
+      },
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "cgraphy_searchOutput",
+        "type": "object"
+      }
+    },
+    {
+      "name": "cgraphy_context",
+      "description": "Get the relevant subgraph around one symbol or file: its signature, summary, callers, callees, imports and co-changed files \u2014 within a token budget. Use instead of reading whole files; then read only the 1-2 files that matter.",
+      "inputSchema": {
+        "properties": {
+          "symbol_or_file": {
+            "title": "Symbol Or File",
+            "type": "string"
+          },
+          "token_budget": {
+            "default": 2000,
+            "title": "Token Budget",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "symbol_or_file"
+        ],
+        "title": "cgraphy_contextArguments",
+        "type": "object"
+      },
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "cgraphy_contextOutput",
+        "type": "object"
+      }
+    },
+    {
+      "name": "cgraphy_read",
+      "description": "Read ONLY the source of one symbol (function/class) with line numbers, within a token budget. Use instead of reading whole files once cgraphy_search or cgraphy_context located the symbol.",
+      "inputSchema": {
+        "properties": {
+          "symbol_or_file": {
+            "title": "Symbol Or File",
+            "type": "string"
+          },
+          "token_budget": {
+            "default": 1500,
+            "title": "Token Budget",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "symbol_or_file"
+        ],
+        "title": "cgraphy_readArguments",
+        "type": "object"
+      },
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "cgraphy_readOutput",
+        "type": "object"
+      }
+    },
+    {
+      "name": "cgraphy_impact",
+      "description": "Blast radius BEFORE editing a symbol: everything that depends on it (direct and transitive callers/importers), tests likely affected, and files that historically change together with it. ALWAYS call this before modifying or refactoring shared code.",
+      "inputSchema": {
+        "properties": {
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "token_budget": {
+            "default": 1500,
+            "title": "Token Budget",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "symbol"
+        ],
+        "title": "cgraphy_impactArguments",
+        "type": "object"
+      },
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "cgraphy_impactOutput",
+        "type": "object"
+      }
+    },
+    {
+      "name": "cgraphy_diff_context",
+      "description": "Review the current uncommitted changes: maps the working git diff to the exact symbols touched and shows what uses them and which tests cover them. Call before committing or when asked to review or continue in-progress work.",
+      "inputSchema": {
+        "properties": {
+          "token_budget": {
+            "default": 2000,
+            "title": "Token Budget",
+            "type": "integer"
+          }
+        },
+        "title": "cgraphy_diff_contextArguments",
+        "type": "object"
+      },
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "cgraphy_diff_contextOutput",
+        "type": "object"
+      }
+    },
+    {
+      "name": "cgraphy_enrich",
+      "description": "Fetch code symbols that still need one-line summaries. Summarize each and submit via cgraphy_store_summaries; repeat until done. Run this when idle or when asked to 'enrich the graph'.",
+      "inputSchema": {
+        "properties": {},
+        "title": "cgraphy_enrichArguments",
+        "type": "object"
+      },
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "cgraphy_enrichOutput",
+        "type": "object"
+      }
+    },
+    {
+      "name": "cgraphy_store_summaries",
+      "description": "Store one-line summaries for symbol ids returned by cgraphy_enrich. items=[{'id': 1, 'summary': 'validates JWT expiry'}, ...]",
+      "inputSchema": {
+        "properties": {
+          "items": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "cgraphy_store_summariesArguments",
+        "type": "object"
+      },
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "cgraphy_store_summariesOutput",
+        "type": "object"
+      }
+    }
+  ],
+  "prompts": [],
+  "resources": []
+}
