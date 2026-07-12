@@ -63,9 +63,9 @@ citable ID and timestamps your work — do this before the workshop.
   ```
   (Do this AFTER the PyPI publish so the package reference validates.)
 - **Community directories** (free listings, drive most discovery):
-  - PulseMCP: https://www.pulsemcp.com/submit
-  - mcp.so: submit via their GitHub issue template
-  - Smithery: https://smithery.ai — connect the GitHub repo
+  - PulseMCP: https://www.pulsemcp.com/submit (Auto-ingests from Official Registry)
+  - mcp.so: submit via their GitHub issue template (Submitted: https://github.com/chatmcp/mcpso/issues/3126)
+  - Smithery: https://smithery.ai — connect the GitHub repo (Ready: smithery.yaml added)
 - **Awesome lists**: PR to `punkpeye/awesome-mcp-servers` under
   "Code Analysis" with a one-liner + link.
 
