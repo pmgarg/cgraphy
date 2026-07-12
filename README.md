@@ -24,6 +24,11 @@ the graph and gets the relevant subgraph in a couple of thousand tokens.
   through the enrich loop; summaries survive re-indexing via content hashing.
 - **Zero infrastructure.** One SQLite file in `.cgraphy/`. No services, no
   daemons, no vector database.
+- **Proven end-to-end.** In 400+ controlled agent runs on SWE-bench Lite,
+  the deployed configuration resolved **14 vs 8** of 57 real GitHub issues
+  (official Docker harness). Indexes kubernetes (26K files, 219K nodes) in
+  **49s**, keeps it fresh in **1.6s** cycles, answers queries in 1–152ms.
+  All benchmarks and predictions are in this repo ([paper/](paper/)).
 
 ## Install
 

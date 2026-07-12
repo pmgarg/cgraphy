@@ -11,7 +11,7 @@
 Context Layer for AI Coding Agents}
 \author{Prateek Mohan Garg\\
 \small\texttt{prateekmohangarg@gmail.com}}
-\date{July 2026 --- draft v0.3}
+\date{July 2026 --- draft v0.4}
 
 \begin{document}
 \maketitle
@@ -38,14 +38,18 @@ a commit-derived localization suite (450 tasks, 9 repositories,
 evaluated at their pre-fix snapshots. Across 9 repositories, the signal
 stack lifts mean hit@10 from 0.602 (lexical baseline) to 0.733, with
 semantic fusion the largest single contributor at zero added payload; on
-real GitHub issues the full stack gains +15.8 points hit@5 and hit@10
-(0.456 $\rightarrow$ 0.614). Gains concentrate where lexical search is
-weakest (C++ +28, JavaScript +24 hit@10) --- and on one repository fusion
-\emph{hurts}, underscoring that graph signals are measurable options, not
-assumed wins. Every configuration answers in a few hundred to
-$\sim$1{,}300 tokens; on real private codebases, orientation via the graph
-is 134--420$\times$ cheaper than reading the code.\footnote{Code,
-benchmarks, and data: \url{https://github.com/pmgarg/cgraphy}}
+real GitHub issues the full stack gains +15.8 points hit@5
+(0.456 $\rightarrow$ 0.614 hit@10). We then close the loop with 400+
+controlled runs of real agents: merely \emph{exposing} graph tools costs
+accuracy, imperative steering costs 14 points, and only an enriched graph
+with substitution-style steering restores parity --- yet the same deployed
+configuration resolves \textbf{14 vs.\ 8} of 57 real issues end-to-end
+under the official SWE-bench Docker harness (+75\% relative), locating the
+graph's agentic value in the editing phase rather than first-file
+localization. cgraphy indexes kubernetes (26K files, 219K nodes) in 49\,s
+with 1.6\,s freshness checks; on real private codebases, orientation via
+the graph is 134--420$\times$ cheaper than reading the code.\footnote{Code,
+benchmarks, predictions, and data: \url{https://github.com/pmgarg/cgraphy}}
 \end{abstract}
 
 \section{Introduction}
@@ -103,6 +107,13 @@ its own graph), and a hard token budget on every answer.
         one repository where fusion hurts, (d)~co-change helps only where
         history is dense, and (e)~all configurations stay 1--3 orders of
         magnitude cheaper than reading code (Section~\ref{sec:results}).
+  \item \emph{Agent evidence:} 400+ controlled agent runs separating
+        retrieval quality from agentic value: tool availability and
+        imperative steering \emph{reduce} a small model's accuracy;
+        enrichment plus substitution-style steering restores parity; and
+        end-to-end, the deployed configuration resolves 14 vs.\ 8 of 57
+        real issues under the official SWE-bench harness
+        (Section~\ref{sec:results}).
   \item \emph{Practice:} deployment mechanics that research systems omit:
         agent steering via instruction files, staleness-driven incremental
         re-indexing, and content sniffing that survives real user
@@ -364,13 +375,93 @@ that seed an agent's \emph{first} tool call; LLM-in-the-loop localization
 agents~\cite{locagent} report higher file accuracy at orders of magnitude
 more tokens, and the two are complementary layers, not competitors.
 
-\textbf{Token economy.} Retrieval payloads range 148--1{,}239 tokens per
+\textbf{Token economy.} Retrieval payloads range 148--1{,}300 tokens per
 query across all repositories and methods. On three private codebases
 (852, 360, and 592 files; Python and C++), full orientation via
 \texttt{overview}+\texttt{search}+\texttt{context} cost 2{,}623--4{,}431
 tokens versus 0.59M--1.25M tokens for reading the code:
 \textbf{134--420$\times$} reductions, growing with repository size since
 the graph payload is budget-capped while code volume is not.
+
+\subsection{Agent-in-the-loop evaluation}
+Retrieval metrics do not guarantee agent outcomes, so we ran real agents
+(Claude CLI, \texttt{haiku-4.5}, identical prompts and budgets) on the
+same 57 instances in two tasks: \emph{localization} (name the files to
+modify; 30-turn cap; read-only tools) and \emph{resolution} (fix the bug
+with edit tools, 40-turn cap; patches judged by the official SWE-bench
+Docker harness against each project's tests).
+
+\begin{table}[t]
+\centering
+\caption{Agent localization, four integration configurations
+(57 instances each; 285 agent runs total including retries).}
+\small
+\begin{tabular}{lccccc}
+\toprule
+Configuration & hit@5 & MRR & Tokens & Turns & \$/run \\
+\midrule
+file tools only (baseline)    & \textbf{0.684} & \textbf{0.684} & 563K & 22.3 & 0.134 \\
++ graph tools available        & 0.649 & 0.649 & 626K & 23.3 & 0.147 \\
++ imperative steering (v2)     & 0.544 & 0.535 & 773K & 26.2 & 0.174 \\
++ enriched graph, selective steering (v3) & \textbf{0.684} & 0.655 & 598K & 23.3 & 0.146 \\
+\bottomrule
+\end{tabular}
+\label{tab:agentloc}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{End-to-end issue resolution (official SWE-bench harness,
+arm64 local builds). Common subset = instances whose evaluation completed
+in both arms.}
+\small
+\begin{tabular}{lccc}
+\toprule
+ & Resolved / submitted & Resolved / evaluable & Common subset (n=27) \\
+\midrule
+baseline agent            & 8 / 57 (14.0\%) & 8 / 33 & 6 \\
++ cgraphy (as deployed)   & \textbf{14 / 57 (24.6\%)} & \textbf{14 / 38} & \textbf{10} \\
+\bottomrule
+\end{tabular}
+\label{tab:resolution}
+\end{table}
+
+\textbf{Localization: integration configuration is everything
+(Table~\ref{tab:agentloc}).} Merely making graph tools \emph{available}
+cost 3.5 points --- the agent used them sporadically and redundantly.
+Imperative steering (``call \texttt{overview} first'') cost 14 points and
++17\% tokens: transcript analysis showed turns burned loading tool schemas
+(instruction files must use full MCP names, e.g.
+\texttt{mcp\_\_cgraphy\_\_cgraphy\_search}) and duplicated graph/grep
+lookups. Enriching the graph (agent-written summaries) and rewriting
+steering as \emph{substitution rules} (``use \texttt{cgraphy\_read}
+instead of whole-file reads'') restored exact baseline parity at
+comparable cost. For a small model with strong native grep habits,
+graph tooling equals --- but does not beat --- lexical exploration on
+first-file localization.
+
+\textbf{Resolution: the graph pays off where edits happen
+(Table~\ref{tab:resolution}).} With the deployed configuration the same
+model resolved \textbf{14 vs.\ 8} of 57 real issues (+75\% relative;
+10 vs.\ 6 on the strictly-fair common subset), verified by each project's
+own test suites. cgraphy uniquely resolved 8 instances (baseline uniquely
+2). Together with Table~\ref{tab:agentloc}, this suggests the graph's
+agentic value concentrates in the \emph{editing} phase --- choosing the
+right edit site among candidates, seeing callers and co-changed files
+before writing --- rather than in finding the first file, which lexical
+search already does well. Patch generation is stochastic; we report the
+final run per arm and release all predictions and harnesses.
+
+\textbf{Monorepo scale.} On kubernetes/kubernetes (26{,}190 files;
+219{,}431 nodes; 226\,MB graph), a full index takes \textbf{48.9\,s},
+re-indexing after a one-file edit \textbf{10.4\,s}, an idle freshness
+check \textbf{1.6\,s}, and queries answer in 1--152\,ms --- figures that
+make the background-refresh design (``serving is watching'') viable. Our
+first implementation took 2.6 \emph{hours}: suffix-based reference
+resolution scanned all 219K qualified names per unresolved reference.
+Name-keyed candidate indexing and a no-change fast path yielded
+193$\times$/860$\times$ speedups --- a reminder that graph tooling for
+agents must be engineered, and benchmarked, at monorepo scale.
 
 \section{Deployment Practice}\label{sec:practice}
 Two findings that research prototypes rarely report. \emph{Steering is
@@ -394,29 +485,36 @@ against a strong lexical baseline and repository-dependent, and we frame
 them accordingly. The SWE-bench-derived suite measures localization, not
 end-to-end issue resolution; running full SWE-bench with an agent steered
 by cgraphy is the next experiment and requires substantial compute.
-Token counts use a 4-chars/token estimate. Agent-written summaries were
-empty during all benchmarks: embeddings covered only names, qualified
-names, and signatures, and expansion used only structural text --- so the
-reported numbers are a lower bound on what an enriched graph could
-achieve. Usage-aware reweighting is implemented but unevaluated (it
-requires longitudinal agent traces); the RRF fusion weights and the
-ripgrep regression suggest per-repository signal calibration as concrete
-future work.
+Token counts use a 4-chars/token estimate. The retrieval suites ran on
+unenriched graphs (embeddings over names and signatures only), making
+those numbers a lower bound. Agent experiments used one small model
+(haiku-4.5); whether stronger models show the same integration
+sensitivities is open. Patch generation is stochastic across retries, and
+17/57 (baseline) and 10/57 (cgraphy) instances failed to build on arm64
+--- we therefore also report the common completed subset, where the
+resolution advantage persists (10 vs.\ 6). Usage-aware reweighting is
+implemented but unevaluated (it requires longitudinal traces); the RRF
+fusion weights and the ripgrep regression suggest per-repository signal
+calibration as concrete future work.
 
 \section{Conclusion}
 cgraphy packages code knowledge graphs as a zero-infrastructure,
-any-agent, token-budgeted context layer spanning both the reading loop
-(overview, search, context, symbol-level reads) and the editing loop
-(impact analysis, diff review), and uses two objective benchmarks to
-decompose which signals earn their tokens: semantic fusion (largest,
-free at query time, occasionally harmful), PageRank (small, free,
-consistent), structural expansion (moderate cost, biggest where lexical
-retrieval fails), and co-change (history-quality dependent). The token
-economy --- hundreds of tokens per query against 134--420$\times$ more for
-reading code --- is the unconditional win. Remaining roadmap: evaluating
-usage-feedback reweighting on longitudinal traces, summary-quality
-evaluation after agent enrichment, per-repository signal calibration, and
-full SWE-bench agent runs.
+any-agent, token-budgeted, self-maintaining context layer spanning the
+reading loop (overview, search, context, symbol reads) and the editing
+loop (impact analysis, diff review), and decomposes which signals earn
+their tokens: semantic fusion (largest, free at query time, occasionally
+harmful), PageRank (small, free, consistent), structural expansion
+(moderate cost, biggest where lexical retrieval fails), and co-change
+(history-quality dependent). Its agent study delivers a caution and a
+payoff the field currently conflates: retrieval gains do not transfer to
+agents through tool availability or imperative steering --- integration
+must be engineered and measured --- yet the properly deployed graph
+raised end-to-end issue resolution from 8 to 14 of 57 under the official
+SWE-bench harness while indexing monorepos in seconds. The token economy
+--- hundreds of tokens per query against 134--420$\times$ more for
+reading code --- remains the unconditional win. Roadmap: stronger-model
+agent studies, summary-quality evaluation, usage-feedback reweighting on
+longitudinal traces, and per-repository signal calibration.
 
 \begin{thebibliography}{12}
 \bibitem{repograph} Ouyang, S., et al. RepoGraph: Enhancing AI Software

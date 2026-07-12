@@ -93,6 +93,20 @@
     "per_repo_hit10_expand": {"flask": 1.0, "requests": 0.83, "sphinx": 0.69,
       "seaborn": 0.5, "pytest": 0.29, "xarray": 0.2, "pylint": 0.17}
   },
+  "agent_localization": {
+    "setup": "57 SWE-bench Lite instances, haiku-4.5 via Claude CLI, identical prompts, 30-turn cap, Read/Grep/Glob (+cgraphy MCP where noted)",
+    "arms": {
+      "baseline": {"hit@5": 0.684, "hit@10": 0.684, "mrr": 0.684,
+        "avg_tokens": 562575, "avg_turns": 22.3, "avg_cost_usd": 0.134},
+      "tools_available": {"hit@5": 0.649, "hit@10": 0.649, "mrr": 0.649,
+        "avg_tokens": 625754, "avg_turns": 23.3, "avg_cost_usd": 0.147},
+      "steered_v2": {"hit@5": 0.544, "hit@10": 0.544, "mrr": 0.535,
+        "avg_tokens": 772601, "avg_turns": 26.2, "avg_cost_usd": 0.174},
+      "enriched_steered_v3": {"hit@5": 0.684, "hit@10": 0.684, "mrr": 0.655,
+        "avg_tokens": 597510, "avg_turns": 23.3, "avg_cost_usd": 0.146}
+    },
+    "finding": "availability alone: -3.5pts; imperative steering: -14pts; enriched graph + replacement-style steering restores baseline parity at comparable cost"
+  },
   "swebench_resolution": {
     "setup": "57 SWE-bench Lite instances, haiku-4.5 agents, max 40 turns, Edit tools, no Bash; official swebench harness v4.1.0, arm64 local builds; canonical = final run per arm",
     "baseline": {"resolved": 8, "submitted": 57, "completed_eval": 33,
