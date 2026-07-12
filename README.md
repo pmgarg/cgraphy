@@ -184,3 +184,5 @@ Design details: [docs/superpowers/specs/2026-07-08-cgraphy-design.md](docs/super
 ## License
 
 MIT
+
+mcp-name: io.github.pmgarg/cgraphy
