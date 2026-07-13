@@ -1,6 +1,10 @@
-# cgraphy
+# cgraphy – Code Knowledge Graph MCP Server
 
-**A code knowledge graph for AI coding agents, served over MCP.**
+[![PyPI version](https://img.shields.io/pypi/v/cgraphy.svg)](https://pypi.org/project/cgraphy/)
+[![Python versions](https://img.shields.io/pypi/pyversions/cgraphy.svg)](https://pypi.org/project/cgraphy/)
+[![License](https://img.shields.io/pypi/l/cgraphy.svg)](https://github.com/pmgarg/cgraphy/blob/master/LICENSE)
+
+**cgraphy** is a Python code knowledge graph and Model Context Protocol (MCP) server for AI coding agents such as Claude Code, Codex CLI, Cursor, and Gemini CLI.
 
 cgraphy indexes any codebase into a knowledge graph — functions, classes and
 files as nodes; calls, imports, inheritance and git co-change history as
@@ -28,7 +32,7 @@ the graph and gets the relevant subgraph in a couple of thousand tokens.
   the deployed configuration resolved **14 vs 8** of 57 real GitHub issues
   (official Docker harness). Indexes kubernetes (26K files, 219K nodes) in
   **49s**, keeps it fresh in **1.6s** cycles, answers queries in 1–152ms.
-  All benchmarks and predictions are in this repo ([paper/](paper/)).
+  All benchmarks and predictions are in this repo ([Research paper and benchmarks](https://github.com/pmgarg/cgraphy/tree/master/paper)).
 
 ## Install
 
@@ -179,7 +183,7 @@ fully reproducible. Results and a paper draft live in [paper/](paper/).
 5. Optional: `--git-history` adds weighted co-change edges mined from
    `git log`.
 
-Design details: [docs/superpowers/specs/2026-07-08-cgraphy-design.md](docs/superpowers/specs/2026-07-08-cgraphy-design.md)
+Design details: [docs/superpowers/specs/2026-07-08-cgraphy-design.md](https://github.com/pmgarg/cgraphy/blob/master/docs/superpowers/specs/2026-07-08-cgraphy-design.md)
 
 ## License
 

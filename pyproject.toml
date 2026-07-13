@@ -1,6 +1,6 @@
 [project]
 name = "cgraphy"
-version = "0.1.1"
+version = "0.1.2"
 description = "Code knowledge graph over MCP: compact, token-budgeted context for AI coding agents"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -12,6 +12,14 @@ dependencies = [
     "mcp>=1.2",
     "pathspec>=0.12",
 ]
+
+[project.urls]
+Homepage = "https://github.com/pmgarg/cgraphy"
+Documentation = "https://github.com/pmgarg/cgraphy#readme"
+Repository = "https://github.com/pmgarg/cgraphy"
+Issues = "https://github.com/pmgarg/cgraphy/issues"
+Changelog = "https://github.com/pmgarg/cgraphy/releases"
+PyPI = "https://pypi.org/project/cgraphy/"
 
 [project.optional-dependencies]
 summarize = ["anthropic>=0.40"]
