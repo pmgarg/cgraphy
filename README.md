@@ -4,6 +4,9 @@
 [![Python versions](https://img.shields.io/pypi/pyversions/cgraphy.svg)](https://pypi.org/project/cgraphy/)
 [![License](https://img.shields.io/pypi/l/cgraphy.svg)](https://github.com/pmgarg/cgraphy/blob/master/LICENSE)
 
+**PyPI:** [https://pypi.org/project/cgraphy/](https://pypi.org/project/cgraphy/)  
+**GitHub:** [https://github.com/pmgarg/cgraphy](https://github.com/pmgarg/cgraphy)
+
 **cgraphy** is a Python code knowledge graph and Model Context Protocol (MCP) server for AI coding agents such as Claude Code, Codex CLI, Cursor, and Gemini CLI.
 
 cgraphy indexes any codebase into a knowledge graph — functions, classes and
