@@ -36,6 +36,39 @@ citable ID and timestamps your work — do this before the workshop.
    typically completes in 1–3 business days; you'll get arXiv:2607.NNNNN.
 5. After it posts: add the arXiv badge/link to the GitHub README.
 
+### 1b. No endorsement yet? Publish NOW on Zenodo (equal citability)
+
+Endorsement can take weeks. Do this today instead of waiting — it does
+NOT conflict with posting to arXiv later:
+
+1. **Zenodo** (https://zenodo.org — CERN, free, permanent):
+   - Sign up (or log in with GitHub) → "New upload".
+   - Upload `paper/cgraphy.pdf`. Type: Preprint. License: CC BY 4.0.
+   - Title/abstract/author: copy from the paper. Keywords: code knowledge
+     graph, MCP, AI coding agents, SWE-bench.
+   - Publish → you get a **DOI** (e.g. 10.5281/zenodo.XXXXXXX)
+     immediately. A DOI is a first-class citable identifier — for many
+     purposes stronger than an arXiv ID.
+   - Bonus: in Zenodo → GitHub integration, flip the switch for
+     `pmgarg/cgraphy` and create a GitHub Release `v1.0.0` — the code
+     archive gets its own DOI (CITATION.cff in the repo feeds the
+     metadata automatically).
+2. Optional second mirror: **TechRxiv** (https://www.techrxiv.org, IEEE)
+   — classic preprint look, light moderation, no endorsement, also a DOI.
+3. Put the DOI badge in the README and cite it as
+   "Garg, P. M. (2026). ... Zenodo. https://doi.org/10.5281/zenodo.XXXXXXX".
+4. **Keep hunting the arXiv endorsement in parallel** — the highest-yield
+   route: email the corresponding authors of papers we cite (RepoGraph,
+   LocAgent, CodexGraph — early-career authors usually respond) with your
+   endorsement code, one paragraph, and the Zenodo link. When arXiv
+   accepts later, both records coexist; arXiv will show as v1 there.
+5. **Never** use viXra or any paid "rapid publication journal" — both
+   actively damage credibility.
+
+Note: the workshop targets in §4 do NOT require arXiv — peer-reviewed
+publication there is the real credibility milestone, and the Zenodo DOI
+is fully sufficient to cite in the meantime.
+
 ## 2. PyPI
 
 `cgraphy` is **available** on PyPI (verified 2026-07-09). Artifacts are in
