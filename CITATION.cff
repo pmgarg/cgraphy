@@ -17,6 +17,10 @@ keywords:
   - AI coding agents
   - retrieval
   - SWE-bench
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.21422935
+    description: "The paper describing cgraphy (Zenodo preprint)"
 preferred-citation:
   type: article
   title: "Which Graph Signals Pay for Their Tokens? cgraphy: A Token-Budgeted Code Knowledge Graph as a Portable Context Layer for AI Coding Agents"
@@ -24,4 +28,5 @@ preferred-citation:
     - family-names: Garg
       given-names: Prateek Mohan
   year: 2026
-  url: "https://github.com/pmgarg/cgraphy"
+  doi: 10.5281/zenodo.21422935
+  url: "https://doi.org/10.5281/zenodo.21422935"

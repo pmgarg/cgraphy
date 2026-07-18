@@ -36,7 +36,14 @@ citable ID and timestamps your work — do this before the workshop.
    typically completes in 1–3 business days; you'll get arXiv:2607.NNNNN.
 5. After it posts: add the arXiv badge/link to the GitHub README.
 
-### 1b. No endorsement yet? Publish NOW on Zenodo (equal citability)
+### 1b. Zenodo — ✅ PUBLISHED 2026-07-18
+
+**DOI: https://doi.org/10.5281/zenodo.21422935** — the paper is live and
+citable. DOI badge + BibTeX are in the README; CITATION.cff carries the
+DOI. Remaining from this section: endorsement emails to cited authors
+(step 4 below) and never-viXra (step 5).
+
+Original steps for reference:
 
 Endorsement can take weeks. Do this today instead of waiting — it does
 NOT conflict with posting to arXiv later:

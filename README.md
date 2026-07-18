@@ -3,7 +3,9 @@
 [![PyPI version](https://img.shields.io/pypi/v/cgraphy.svg)](https://pypi.org/project/cgraphy/)
 [![Python versions](https://img.shields.io/pypi/pyversions/cgraphy.svg)](https://pypi.org/project/cgraphy/)
 [![License](https://img.shields.io/pypi/l/cgraphy.svg)](https://github.com/pmgarg/cgraphy/blob/master/LICENSE)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21422935.svg)](https://doi.org/10.5281/zenodo.21422935)
 
+**Paper (DOI):** [https://doi.org/10.5281/zenodo.21422935](https://doi.org/10.5281/zenodo.21422935)  
 **PyPI:** [https://pypi.org/project/cgraphy/](https://pypi.org/project/cgraphy/)  
 **GitHub:** [https://github.com/pmgarg/cgraphy](https://github.com/pmgarg/cgraphy)
 
@@ -187,6 +189,22 @@ fully reproducible. Results and a paper draft live in [paper/](paper/).
    `git log`.
 
 Design details: [docs/superpowers/specs/2026-07-08-cgraphy-design.md](https://github.com/pmgarg/cgraphy/blob/master/docs/superpowers/specs/2026-07-08-cgraphy-design.md)
+
+## Citing cgraphy
+
+If you use cgraphy in research or tooling, please cite the paper:
+
+```bibtex
+@misc{garg2026cgraphy,
+  author = {Garg, Prateek Mohan},
+  title  = {Which Graph Signals Pay for Their Tokens? cgraphy: A Token-Budgeted
+            Code Knowledge Graph as a Portable Context Layer for AI Coding Agents},
+  year   = {2026},
+  doi    = {10.5281/zenodo.21422935},
+  url    = {https://doi.org/10.5281/zenodo.21422935},
+  note   = {Preprint}
+}
+```
 
 ## License
 
